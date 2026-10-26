@@ -31,6 +31,30 @@ def _int(el):
         return None
 
 
+class BadDocument(Exception):
+    """The server answered, but not with the vote record we asked for."""
+
+
+def _snippet(data):
+    return data[:300].decode("utf-8", "replace").replace("\n", " ").strip()
+
+
+def xml_root(data, expected):
+    if data[:2] == b"\x1f\x8b":  # gzip-compressed response
+        import gzip
+        data = gzip.decompress(data)
+    try:
+        root = ET.fromstring(data)
+    except ET.ParseError:
+        raise BadDocument("not XML: " + _snippet(data))
+    for el in root.iter():  # ignore XML namespaces if the publisher adds them
+        if isinstance(el.tag, str) and "}" in el.tag:
+            el.tag = el.tag.split("}", 1)[1]
+    if root.tag != expected:
+        raise BadDocument(f"expected <{expected}>, got <{root.tag}>: " + _snippet(data))
+    return root
+
+
 def _text(root, path):
     el = root.find(path)
     return re.sub(r"\s+", " ", (el.text or "")).strip() if el is not None and el.text else ""
@@ -39,8 +63,17 @@ def _text(root, path):
 # ---------------- House ----------------
 
 def parse_house(xml_bytes):
-    root = ET.fromstring(xml_bytes)
+    try:
+        return _parse_house(xml_bytes)
+    except (ValueError, AttributeError, TypeError) as e:
+        raise BadDocument(f"unreadable House record ({e}): " + _snippet(xml_bytes))
+
+
+def _parse_house(xml_bytes):
+    root = xml_root(xml_bytes, "rollcall-vote")
     meta = root.find("vote-metadata")
+    if meta is None:
+        raise BadDocument("no <vote-metadata>: " + _snippet(xml_bytes))
     congress = int(_text(meta, "congress"))
     session = int(re.sub(r"\D", "", _text(meta, "session")) or 0)
     roll = int(_text(meta, "rollcall-num"))
@@ -89,12 +122,16 @@ def update_house(cfg, members_by_id, log=print):
         path = os.path.join(CACHE, "rolls", f"H-{cfg['congress']}-{s['session']}.json")
         cache = read_json(path, {"rolls": {}})
         n = max([int(k) for k in cache["rolls"]] or [0]) + 1
-        misses = 0
+        misses, first_bad = 0, None
         while misses < 2:  # stop after two missing roll numbers in a row
             url = f"https://clerk.house.gov/evs/{s['year']}/roll{n:03d}.xml"
             try:
                 rec, _ = parse_house(fetch(url))
-            except NotFound:
+            except (NotFound, BadDocument) as e:
+                # The Clerk answers a not-yet-existing roll number with an error page, so a bad
+                # document after the last real vote is normal. One on the very first roll is not.
+                if isinstance(e, BadDocument) and first_bad is None:
+                    first_bad = f"{url} -> {e}"
                 misses += 1
                 n += 1
                 continue
@@ -105,6 +142,8 @@ def update_house(cfg, members_by_id, log=print):
                 cache["rolls"][str(rec["roll"])] = rec
                 new += 1
             n += 1
+        if not cache["rolls"] and first_bad:
+            raise RuntimeError("The House Clerk did not return vote data. First response: " + first_bad)
         write_json(path, cache)
     log(f"House: {new} new roll calls")
     return new
@@ -113,7 +152,14 @@ def update_house(cfg, members_by_id, log=print):
 # ---------------- Senate ----------------
 
 def parse_senate(xml_bytes, lis_to_bioguide):
-    root = ET.fromstring(xml_bytes)
+    try:
+        return _parse_senate(xml_bytes, lis_to_bioguide)
+    except (ValueError, AttributeError, TypeError) as e:
+        raise BadDocument(f"unreadable Senate record ({e}): " + _snippet(xml_bytes))
+
+
+def _parse_senate(xml_bytes, lis_to_bioguide):
+    root = xml_root(xml_bytes, "roll_call_vote")
     congress = int(_text(root, "congress"))
     session = int(_text(root, "session"))
     roll = int(_text(root, "vote_number"))
@@ -157,7 +203,11 @@ def parse_senate(xml_bytes, lis_to_bioguide):
 
 def senate_menu(congress, session):
     url = f"https://www.senate.gov/legislative/LIS/roll_call_lists/vote_menu_{congress}_{session}.xml"
-    root = ET.fromstring(fetch(url))
+    data = fetch(url)
+    try:
+        root = xml_root(data, "vote_summary")
+    except BadDocument as e:
+        raise RuntimeError(f"The Senate did not return its vote list ({url}): {e}")
     out = {}
     for v in root.iter("vote"):
         n = int(_text(v, "vote_number"))
@@ -180,7 +230,10 @@ def update_senate(cfg, lis_to_bioguide, log=print):
             if str(n) in cache["rolls"]:
                 continue
             url = f"https://www.senate.gov/legislative/LIS/roll_call_votes/vote{c}{s['session']}/vote_{c}_{s['session']}_{n:05d}.xml"
-            rec, unknown = parse_senate(fetch(url), lis_to_bioguide)
+            try:
+                rec, unknown = parse_senate(fetch(url), lis_to_bioguide)
+            except BadDocument as e:
+                raise RuntimeError(f"The Senate did not return vote data ({url}): {e}")
             rec["menuTally"] = menu[n]
             if unknown:
                 problems.append(f"{rec['id']}: unknown senators {unknown}")

@@ -10,7 +10,9 @@ CACHE = os.path.join(ROOT, "data")          # parsed roll calls, kept in the rep
 SITE_DATA = os.path.join(ROOT, "site", "data")  # what the web app loads
 CURATED = os.path.join(ROOT, "curated")
 
-USER_AGENT = "WeHold civic data bot (+https://github.com/nhillis41-pixel/wehold)"
+USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 "
+              "WeHold/1.0 (+https://github.com/nhillis41-pixel/wehold)")
+HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/xml,text/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5"}
 
 
 def load_config():
@@ -26,7 +28,7 @@ def fetch(url, retries=4, pause=0.4):
     """GET a URL politely. Raises NotFound on 404, RuntimeError after repeated failures."""
     last = None
     for attempt in range(retries):
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
+        req = urllib.request.Request(url, headers=HEADERS)
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 data = r.read()
