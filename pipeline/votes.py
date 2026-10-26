@@ -256,3 +256,32 @@ def load_all_rolls(cfg):
             for rec in data["rolls"].values():
                 rolls[rec["id"]] = rec
     return rolls
+
+
+def load_manual_senate(curated_dir, lis_to_bioguide, rolls):
+    """Key Senate votes transcribed from senate.gov by the WeHold editor, used while senate.gov
+    blocks automated downloads. Official downloaded records always take precedence. These cover
+    only highlighted votes, so they are marked "manual" and left out of attendance figures."""
+    added, problems = 0, []
+    # Files may sit in curated/senate/, curated/, or the repo's top level (where web uploads land).
+    paths = {}
+    for d in (os.path.dirname(curated_dir), curated_dir, os.path.join(curated_dir, "senate")):
+        if os.path.isdir(d):
+            for name in os.listdir(d):
+                if re.fullmatch(r"S-\d+-\d+-\d+\.json", name):
+                    paths[name] = os.path.join(d, name)  # later folders win
+    for name in sorted(paths):
+        rec = read_json(paths[name])
+        if rec["id"] in rolls:
+            continue
+        votes = {}
+        for lis, code in rec.pop("votesByLis").items():
+            bid = lis_to_bioguide.get(lis)
+            if not bid:
+                problems.append(f"{rec['id']}: unknown senator {lis}")
+                bid = "lis:" + lis
+            votes[bid] = code
+        rec["votes"] = votes
+        rolls[rec["id"]] = rec
+        added += 1
+    return added, problems

@@ -12,6 +12,7 @@ import statistics
 def compute(rolls, members_by_id):
     stats = {}
     speaker_ids = set()
+    rolls = {k: r for k, r in rolls.items() if not r.get("manual")}  # partial (key votes only)
     for r in rolls.values():
         if r.get("speaker"):
             speaker_ids.add(r["speaker"])
