@@ -77,6 +77,11 @@ def main():
             print(f"::warning::Senate votes could not be updated: {e}")
     rolls = votes_mod.load_all_rolls(cfg)
     print(f"Roll calls on file: {len(rolls)}")
+    unknown = {bid for r in rolls.values() for bid in r["votes"] if bid not in by_id and not bid.startswith("lis:")}
+    if unknown:
+        print(f"Looking up {len(unknown)} member(s) found in vote records: {sorted(unknown)}")
+        members = members_mod.build_members(cfg, today, extra_ids=unknown)
+        by_id = {m["id"]: m for m in members}
 
     curated = read_json(os.path.join(CURATED, "votes.json"))
     errors, warnings = validate.check_rolls(rolls, by_id)

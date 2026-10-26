@@ -62,8 +62,13 @@ def _member(rec, term, today):
     return m
 
 
-def build_members(cfg, today=None):
+def build_members(cfg, today=None, extra_ids=()):
+    """extra_ids: bioguide IDs found in vote records that must be included even if no term
+    overlaps this Congress (e.g. a member-elect listed on the opening-day quorum call who never
+    took the seat)."""
     today = today or datetime.date.today()
+    extra_ids = set(extra_ids)
+    extra = {}
     d = legislators_dir(cfg)
     start = congress_start(cfg["congress"])
     out = {}
@@ -71,6 +76,8 @@ def build_members(cfg, today=None):
         with open(os.path.join(d, fname)) as f:
             recs = yaml.load(f, Loader=getattr(yaml, "CSafeLoader", yaml.SafeLoader))
         for rec in recs:
+            if rec["id"].get("bioguide") in extra_ids and rec.get("terms"):
+                extra[rec["id"]["bioguide"]] = _member(rec, rec["terms"][-1], today)
             for term in rec.get("terms", []):
                 if datetime.date.fromisoformat(term["end"]) <= start:
                     continue
@@ -79,7 +86,11 @@ def build_members(cfg, today=None):
                 # Keep the most recent qualifying term (e.g. a House member who moved to the Senate).
                 if not prev or m["start"] >= prev["start"]:
                     out[m["id"]] = m
+    for bid, m in extra.items():
+        if bid not in out:
+            m["note"] = "Listed in this Congress's vote records but did not serve a term in it"
+            out[bid] = m
     for m in out.values():
-        if not m["current"]:
+        if not m["current"] and "note" not in m:
             m["note"] = "Left office " + m["end"]
     return sorted(out.values(), key=lambda m: (m["state"], m["chamber"], m.get("district", 0), m["last"] or ""))
