@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<roll_call_vote>
+<congress>119</congress>
+<session>2</session>
+<congress_year>2026</congress_year>
+<vote_number>256</vote_number>
+<vote_date>September 30, 2026,  05:46 PM</vote_date>
+<modify_date>September 30, 2026,  06:10 PM</modify_date>
+<vote_question_text>On the Nomination PN1129: Keith Sonderling, of Florida, to be Secretary of Labor</vote_question_text>
+<vote_document_text>Keith Sonderling, of Florida, to be Secretary of Labor</vote_document_text>
+<vote_result_text>Nomination Confirmed (2-1)</vote_result_text>
+<question>On the Nomination</question>
+<vote_title>Confirmation: Keith Sonderling, of F.L., to be Secretary of Labor</vote_title>
+<majority_requirement>1/2</majority_requirement>
+<vote_result>Nomination Confirmed</vote_result>
+<document><document_congress>119</document_congress><document_type>PN</document_type><document_number>1129</document_number><document_name>PN1129</document_name><document_title>Keith Sonderling</document_title><document_short_title></document_short_title></document>
+<amendment><amendment_number></amendment_number></amendment>
+<count><yeas>2</yeas><nays>0</nays><present></present><absent>1</absent></count>
+<tie_breaker><by_whom></by_whom><tie_breaker_vote></tie_breaker_vote></tie_breaker>
+<members>
+<member><member_full>Blackburn (R-TN)</member_full><last_name>Blackburn</last_name><first_name>Marsha</first_name><party>R</party><state>TN</state><vote_cast>Not Voting</vote_cast><lis_member_id>S396</lis_member_id></member>
+<member><member_full>Hagerty (R-TN)</member_full><last_name>Hagerty</last_name><first_name>Bill</first_name><party>R</party><state>TN</state><vote_cast>Yea</vote_cast><lis_member_id>S407</lis_member_id></member>
+<member><member_full>Schumer (D-NY)</member_full><last_name>Schumer</last_name><first_name>Charles</first_name><party>D</party><state>NY</state><vote_cast>Yea</vote_cast><lis_member_id>S270</lis_member_id></member>
+</members>
+</roll_call_vote>

@@ -1,0 +1,10 @@
+{
+  "congress": 119,
+  "sessions": [
+    { "session": 1, "year": 2025 },
+    { "session": 2, "year": 2026 }
+  ],
+  "electionDay": "2026-11-03",
+  "zipRelationshipUrl": "https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11920_zcta520_natl.txt",
+  "legislatorsRepo": "https://github.com/unitedstates/congress-legislators.git"
+}
