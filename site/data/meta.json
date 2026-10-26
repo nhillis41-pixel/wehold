@@ -3,7 +3,7 @@
  "electionDay": "2026-11-03",
  "latest": {
   "House": "2026-09-16",
-  "Senate": null
+  "Senate": "2026-09-30"
  },
  "rolls": {
   "House": 676,
@@ -12,8 +12,8 @@
  "unavailable": {
   "Senate": "Could not reach the official source on the last update."
  },
- "updated": "2026-10-26T22:28Z",
- "warnings": 10,
+ "updated": "2026-10-26T22:41Z",
+ "warnings": 0,
  "zips": {
   "split": 5346,
   "zips": 33791
