@@ -80,6 +80,7 @@
   function attendanceLine(m) {
     const a = attOf(m);
     if (!D.att) return `<span class="muted">Attendance appears after the first data update.</span>`;
+    if (!a && D.meta.unavailable && D.meta.unavailable[m.chamber]) return `<span class="muted">${m.chamber} vote records aren't available yet. We're working on access to the official ${m.chamber} data.</span>`;
     if (!a) return `<span class="muted">No recorded votes yet this Congress.</span>`;
     const med = D.att.chambers[m.chamber].medianPct;
     return `Missed <strong>${num(a.missed)}</strong> of ${num(a.eligible)} votes (${a.pct}%)${med != null ? ` · ${m.chamber} median ${med}%` : ""}`;
@@ -310,6 +311,7 @@
     const list = D.votes.filter((v) => ch === "all" || v.ch === ch);
     main.innerHTML = `
       <div class="stack" style="gap:6px"><h1>The Docket</h1><p class="muted" style="max-width:44rem">Major votes in plain English: final passage, nominations, war powers, and procedural votes that decided whether a bill could move. Each links to the official record.</p></div>
+      ${D.meta.unavailable && D.meta.unavailable.Senate ? `<p class="notice">Senate votes aren't shown yet. The Senate's website doesn't currently allow automated downloads from the servers WeHold runs on, and we're working on approved access. House votes are complete.</p>` : ""}
       <div class="row"><div class="seg" role="group" aria-label="Chamber">${["all", "Senate", "House"].map((c) => `<button type="button" data-ch="${c}" aria-pressed="${ch === c}">${c === "all" ? "Both chambers" : c}</button>`).join("")}</div><span class="muted">${list.length} votes</span></div>
       ${list.map((v) => voteCard(v)).join("") || `<p class="muted">No votes yet.</p>`}`;
     main.querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => { S.ch = b.dataset.ch; save(); viewVotes(); }));

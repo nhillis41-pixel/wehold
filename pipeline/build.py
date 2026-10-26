@@ -31,7 +31,9 @@ def passed(result):
 def curated_with_positions(curated, rolls, members_by_id):
     out = []
     for v in curated["votes"]:
-        r = rolls[v["id"]]
+        r = rolls.get(v["id"])
+        if not r:
+            continue  # its chamber's data is temporarily unavailable
         t = r.get("totals") or {}
         pos = {}
         for bid, code in r["votes"].items():
@@ -65,15 +67,22 @@ def main():
     lis = {m["lis"]: m["id"] for m in members if m.get("lis")}
     print(f"  {len(members)} members ({sum(m['current'] for m in members)} serving now)")
 
+    unavailable = {}
     if not args.offline:
         votes_mod.update_house(cfg, by_id)
-        votes_mod.update_senate(cfg, lis)
+        try:
+            votes_mod.update_senate(cfg, lis)
+        except Exception as e:  # e.g. senate.gov refusing requests from cloud servers
+            unavailable["Senate"] = str(e)
+            print(f"::warning::Senate votes could not be updated: {e}")
     rolls = votes_mod.load_all_rolls(cfg)
     print(f"Roll calls on file: {len(rolls)}")
 
     curated = read_json(os.path.join(CURATED, "votes.json"))
     errors, warnings = validate.check_rolls(rolls, by_id)
-    errors += validate.check_curated(curated, rolls)
+    cur_errors, cur_warnings = validate.check_curated(curated, rolls, skip_missing={"S"} if unavailable.get("Senate") else set())
+    errors += cur_errors
+    warnings += cur_warnings
     att = attendance.compute(rolls, by_id)
     warnings += validate.check_attendance(att, members, today)
 
@@ -87,7 +96,10 @@ def main():
 
     zip_info = None
     if not args.offline and not args.skip_zips:
-        zip_info = zips.update(cfg)
+        try:
+            zip_info = zips.update(cfg)
+        except Exception as e:  # keep the previous ZIP table; the app falls back to address lookup
+            print(f"::warning::ZIP table could not be updated: {e}")
 
     write_json(os.path.join(SITE_DATA, "members.json"), members)
     write_json(os.path.join(SITE_DATA, "attendance.json"), att)
@@ -105,6 +117,7 @@ def main():
         "rolls": {"House": att["chambers"]["House"]["rolls"], "Senate": att["chambers"]["Senate"]["rolls"]},
         "latest": {ch: max((r["date"] for r in rolls.values() if r["ch"] == ch), default=None) for ch in ("House", "Senate")},
         "warnings": len(warnings),
+        "unavailable": {ch: "Could not reach the official source on the last update." for ch in unavailable},
     })
     if zip_info:
         meta["zips"] = zip_info

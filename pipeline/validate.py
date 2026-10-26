@@ -33,15 +33,19 @@ def check_rolls(rolls, members_by_id):
     return errors, warnings
 
 
-def check_curated(curated, rolls):
-    errors = []
+def check_curated(curated, rolls, skip_missing=()):
+    """skip_missing: chamber prefixes ("S", "H") whose source was unreachable this run."""
+    errors, warnings = [], []
     ids = set()
     for v in curated["votes"]:
         if v["id"] in ids:
             errors.append(f"curated vote {v['id']} is listed twice")
         ids.add(v["id"])
         if v["id"] not in rolls:
-            errors.append(f"curated vote {v['id']} is not in the official roll-call data")
+            if v["id"][0] in skip_missing:
+                warnings.append(f"curated vote {v['id']} skipped: its chamber's data is unavailable")
+            else:
+                errors.append(f"curated vote {v['id']} is not in the official roll-call data")
         for field in ("title", "sum", "tags"):
             if not v.get(field):
                 errors.append(f"curated vote {v['id']} is missing '{field}'")
@@ -51,7 +55,7 @@ def check_curated(curated, rolls):
                 errors.append(f"question {q['id']} points to unknown vote {link['vote']}")
             if link["yes"] not in ("Yea", "Nay"):
                 errors.append(f"question {q['id']} has an invalid 'yes' value {link['yes']}")
-    return errors
+    return errors, warnings
 
 
 def check_attendance(att, members, today=None):

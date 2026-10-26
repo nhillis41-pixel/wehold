@@ -226,20 +226,22 @@ def update_senate(cfg, lis_to_bioguide, log=print):
         except NotFound:
             log(f"  Senate session {s['session']} has no vote list yet")
             continue
-        for n in sorted(menu):
-            if str(n) in cache["rolls"]:
-                continue
-            url = f"https://www.senate.gov/legislative/LIS/roll_call_votes/vote{c}{s['session']}/vote_{c}_{s['session']}_{n:05d}.xml"
-            try:
-                rec, unknown = parse_senate(fetch(url), lis_to_bioguide)
-            except BadDocument as e:
-                raise RuntimeError(f"The Senate did not return vote data ({url}): {e}")
-            rec["menuTally"] = menu[n]
-            if unknown:
-                problems.append(f"{rec['id']}: unknown senators {unknown}")
-            cache["rolls"][str(n)] = rec
-            new += 1
-        write_json(path, cache)
+        try:
+            for n in sorted(menu):
+                if str(n) in cache["rolls"]:
+                    continue
+                url = f"https://www.senate.gov/legislative/LIS/roll_call_votes/vote{c}{s['session']}/vote_{c}_{s['session']}_{n:05d}.xml"
+                try:
+                    rec, unknown = parse_senate(fetch(url), lis_to_bioguide)
+                except BadDocument as e:
+                    raise RuntimeError(f"The Senate did not return vote data ({url}): {e}")
+                rec["menuTally"] = menu[n]
+                if unknown:
+                    problems.append(f"{rec['id']}: unknown senators {unknown}")
+                cache["rolls"][str(n)] = rec
+                new += 1
+        finally:
+            write_json(path, cache)  # keep whatever was downloaded before any failure
     log(f"Senate: {new} new roll calls")
     for p in problems:
         log("WARNING " + p)

@@ -10,8 +10,7 @@ CACHE = os.path.join(ROOT, "data")          # parsed roll calls, kept in the rep
 SITE_DATA = os.path.join(ROOT, "site", "data")  # what the web app loads
 CURATED = os.path.join(ROOT, "curated")
 
-USER_AGENT = ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36 "
-              "WeHold/1.0 (+https://github.com/nhillis41-pixel/wehold)")
+USER_AGENT = "WeHold civic data bot/1.0 (+https://github.com/nhillis41-pixel/wehold)"
 HEADERS = {"User-Agent": USER_AGENT, "Accept": "application/xml,text/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5"}
 
 
