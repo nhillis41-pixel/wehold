@@ -105,7 +105,9 @@ def main():
         sys.exit(1)
 
     zip_info = None
-    if not args.offline and not args.skip_zips:
+    prev_meta = read_json(os.path.join(SITE_DATA, "meta.json"), {})
+    zips_fresh = prev_meta.get("zipsUpdated") == today.isoformat()  # the ZIP table changes rarely; refresh once a day
+    if not args.offline and not args.skip_zips and not zips_fresh:
         try:
             zip_info = zips.update(cfg)
         except Exception as e:  # keep the previous ZIP table; the app falls back to address lookup
@@ -115,6 +117,11 @@ def main():
     write_json(os.path.join(SITE_DATA, "attendance.json"), att)
     index = {rid: [r["ch"], r["date"], r["question"], r["title"], r["result"], r["url"]] for rid, r in rolls.items()}
     write_json(os.path.join(SITE_DATA, "rolls.json"), index)
+    # The most recent roll calls with every member's vote, for the app's "Latest votes" list.
+    full = [r for r in rolls.values() if not r.get("manual")]
+    full.sort(key=lambda r: (r["date"], r["ch"] == "Senate", r["roll"]), reverse=True)
+    recent = [{k: r.get(k) for k in ("id", "ch", "roll", "date", "question", "title", "bill", "result", "totals", "votes", "url")} for r in full[:40]]
+    write_json(os.path.join(SITE_DATA, "recent.json"), recent)
     write_json(os.path.join(SITE_DATA, "votes.json"), {
         "votes": curated_with_positions(curated, rolls, by_id),
         "questions": curated["questions"],
@@ -132,6 +139,7 @@ def main():
     })
     if zip_info:
         meta["zips"] = zip_info
+        meta["zipsUpdated"] = today.isoformat()
     write_json(os.path.join(SITE_DATA, "meta.json"), meta, compact=False)
     print("Site data updated.")
 

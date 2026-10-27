@@ -249,6 +249,7 @@
       </div>
       ${days != null ? `<div class="band"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="1"/><path d="M8 10V4h8v6M10 7h4"/></svg><div class="stack" style="gap:0"><span class="k">Your next verdict</span><strong>Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ` · ${days} day${days === 1 ? "" : "s"}`}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are up for election.` : "None of your officials' seats are up this time."}</span></div></div>` : ""}
       ${days != null ? `<a class="card" href="#/where" style="text-decoration:none;color:inherit;flex-direction:row;align-items:center;gap:14px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--red);flex:none"><path d="M12 21s-7-6.3-7-11.5A7 7 0 0 1 19 9.5C19 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting sites, from election officials.</span></span><span style="margin-left:auto;font-weight:800;color:var(--navy)">→</span></a>` : ""}
+      ${ed && today >= ed && today <= ed.slice(0, 4) + "-12-31" ? `<a class="card" href="#/results" style="text-decoration:none;color:inherit;flex-direction:row;align-items:center;gap:14px"><strong style="font-size:17px">Election results</strong><span class="muted" style="font-size:14px">Official, from your state's election office</span><span style="margin-left:auto;font-weight:800;color:var(--navy)">→</span></a>` : ""}
       ${NO_SENATORS.has(S.state) ? `<p class="muted">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
       <div class="grid">${del.map(memberCard).join("") || `<p class="muted">We couldn't find officials for this location.</p>`}</div>
       ${recent.length ? `<section class="stack"><div class="row" style="justify-content:space-between"><h2>Recently on the docket</h2><a href="#/votes">All tracked votes →</a></div>${recent.map((v) => voteCard(v)).join("")}</section>` : ""}
@@ -307,15 +308,40 @@
     }
   }
 
-  function viewVotes() {
-    const ch = S.ch || "all";
-    const list = D.votes.filter((v) => ch === "all" || v.ch === ch);
+  async function loadRecent() { if (!D.recent) D.recent = await getJSON("data/recent.json").catch(() => []); return D.recent; }
+  const CODE_LABEL = { Y: "Yea", N: "Nay", P: "Present", X: "NV", O: "Other" };
+  function daysAgo(d) { return Math.round((new Date(new Date().toISOString().slice(0, 10) + "T12:00:00") - new Date(d + "T12:00:00")) / 864e5); }
+  function latestCard(r) {
+    const t = r.totals || {};
+    const mine = delegation().filter((m) => r.votes && r.votes[m.id]);
+    const fresh = daysAgo(r.date) <= 2;
+    return `<article class="card" style="gap:6px">
+      <div class="row" style="gap:8px">${fresh ? `<span class="pill" style="background:var(--red);color:#FBF6EA">New</span>` : ""}<span class="label muted">${esc(r.ch)} · Roll ${esc(r.roll)} · ${fmtDate(r.date)}</span></div>
+      <h3>${esc(r.title || r.question)}</h3>
+      <p class="muted" style="font-size:14px">${esc(r.question)}${r.bill ? " · " + esc(r.bill) : ""}</p>
+      <div class="row" style="gap:8px"><span class="v ${/fail|reject|not agreed/i.test(r.result) ? "Nay" : "Yea"}">${esc(r.result)}</span>${t.yea != null ? `<span style="font-size:14px">${num(t.yea)}–${num(t.nay)}${t.nv ? ` · ${num(t.nv)} not voting` : ""}</span>` : ""}</div>
+      ${mine.length ? `<div class="positions">${mine.map((m) => `<span class="pos">${esc(m.last)} ${vpill(CODE_LABEL[r.votes[m.id]])}</span>`).join("")}</div>` : ""}
+      <a href="${esc(r.url)}" target="_blank" rel="noopener" style="font-size:14px">Official roll call</a>
+    </article>`;
+  }
+
+  async function viewVotes() {
+    const ch = S.ch || "all", mode = S.dview || "key";
+    const seg = (name, val, opts) => `<div class="seg" role="group" aria-label="${name}">${opts.map(([k, l]) => `<button type="button" data-${name}="${k}" aria-pressed="${val === k}">${l}</button>`).join("")}</div>`;
+    let body;
+    if (mode === "latest") {
+      const recent = (await loadRecent()).filter((r) => ch === "all" || r.ch === ch);
+      body = `<p class="muted" style="font-size:14px">Every recorded vote, newest first, checked against official records every hour.${D.meta.updated ? " Last checked " + new Date(D.meta.updated).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "." : ""}${ch !== "House" && D.meta.unavailable && D.meta.unavailable.Senate ? " Senate roll calls will appear here once access to Senate records is approved." : ""}</p>` + (recent.map(latestCard).join("") || `<p class="muted">No recent votes on file yet.</p>`);
+    } else {
+      const list = D.votes.filter((v) => ch === "all" || v.ch === ch);
+      body = `${D.meta.unavailable && D.meta.unavailable.Senate ? `<p class="notice">Senate key votes are copied by hand from the official Senate records and checked against the official totals. The Senate's website doesn't currently allow automated downloads, so Senate attendance isn't available yet while we request access. House votes and attendance are complete.</p>` : ""}` + (list.map((v) => voteCard(v)).join("") || `<p class="muted">No votes yet.</p>`);
+    }
     main.innerHTML = `
-      <div class="stack" style="gap:6px"><h1>The Docket</h1><p class="muted" style="max-width:44rem">Major votes in plain English: final passage, nominations, war powers, and procedural votes that decided whether a bill could move. Each links to the official record.</p></div>
-      ${D.meta.unavailable && D.meta.unavailable.Senate ? `<p class="notice">Senate key votes are copied by hand from the official Senate records and checked against the official totals. The Senate's website doesn't currently allow automated downloads, so Senate attendance isn't available yet while we request access. House votes and attendance are complete.</p>` : ""}
-      <div class="row"><div class="seg" role="group" aria-label="Chamber">${["all", "Senate", "House"].map((c) => `<button type="button" data-ch="${c}" aria-pressed="${ch === c}">${c === "all" ? "Both chambers" : c}</button>`).join("")}</div><span class="muted">${list.length} votes</span></div>
-      ${list.map((v) => voteCard(v)).join("") || `<p class="muted">No votes yet.</p>`}`;
+      <div class="stack" style="gap:6px"><h1>The Docket</h1><p class="muted" style="max-width:44rem">Key votes in plain English, plus every roll call as it happens. Each links to the official record.</p></div>
+      <div class="row">${seg("dview", mode, [["key", "Key votes"], ["latest", "Latest votes"]])}${seg("ch", ch, [["all", "Both"], ["Senate", "Senate"], ["House", "House"]])}</div>
+      ${body}`;
     main.querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => { S.ch = b.dataset.ch; save(); viewVotes(); }));
+    main.querySelectorAll("[data-dview]").forEach((b) => (b.onclick = () => { S.dview = b.dataset.dview; save(); viewVotes(); }));
   }
 
   function viewVote(id) {
@@ -440,7 +466,8 @@
         <strong>Always confirm with your election office.</strong>
         <span>Polling places and hours can change right up to Election Day. Your state or county election office has the final word.</span>
         <a href="${OFFICIAL_FALLBACK}" target="_blank" rel="noopener">Find your state or local election office (USA.gov)</a>
-      </div>`;
+      </div>
+      <p><a href="#/results">Election results →</a></p>`;
     const f = document.getElementById("whereForm"); if (!f) return;
     f.onsubmit = async (e) => {
       e.preventDefault();
@@ -474,6 +501,31 @@
     };
   }
 
+  // ---------- election results: official state sources only; WeHold never calls a race ----------
+  const STATE_ELECTION_SITES = {AL:"https://www.sos.alabama.gov/alabama-votes",AK:"https://www.elections.alaska.gov/",AS:"https://aselectionoffice.gov/",AZ:"https://azsos.gov/elections",AR:"https://www.sos.arkansas.gov/elections",CA:"https://www.sos.ca.gov/elections",CO:"https://www.sos.state.co.us/pubs/elections/main.html",CT:"https://portal.ct.gov/sots/common-elements/v5-template---redesign/elections--voting--home-page",DE:"https://elections.delaware.gov/index.shtml",DC:"https://dcboe.org/",FL:"https://www.dos.myflorida.com/elections/",GA:"https://sos.ga.gov/elections-division-georgia-secretary-states-office",GU:"https://gec.guam.gov/",HI:"https://elections.hawaii.gov/",ID:"https://voteidaho.gov/",IL:"https://www.elections.il.gov/",IN:"https://indianavoters.in.gov/",IA:"https://sos.iowa.gov/elections/voterinformation/index.html",KS:"https://sos.ks.gov/elections/elections.html",KY:"https://elect.ky.gov/Pages/default.aspx",LA:"https://www.sos.la.gov/ElectionsAndVoting/Pages/default.aspx",ME:"https://www.maine.gov/sos/cec/elec/index.html",MD:"https://elections.maryland.gov/",MA:"https://www.sec.state.ma.us/divisions/elections/elections-and-voting.htm",MI:"https://www.michigan.gov/sos/elections",MN:"https://www.sos.state.mn.us/elections-voting/",MS:"https://www.sos.ms.gov/elections-voting",MO:"https://www.sos.mo.gov/elections/",MT:"https://sosmt.gov/elections/",NE:"https://www.nebraska.gov/featured/elections-voting/",NV:"https://www.nvsos.gov/sos/elections",NH:"https://www.sos.nh.gov/elections/voters",NJ:"https://www.nj.gov/state/elections/vote.shtml",NM:"https://www.sos.nm.gov/voting-and-elections/voter-information-portal-nmvote-org/",NY:"https://www.elections.ny.gov/",NC:"https://www.ncsbe.gov/",ND:"https://vip.sos.nd.gov/PortalList.aspx",MP:"https://www.votecnmi.gov.mp/",OH:"https://www.sos.state.oh.us/elections/voters/",OK:"https://oklahoma.gov/elections.html",OR:"https://sos.oregon.gov/voting-elections/Pages/default.aspx",PA:"https://www.dos.pa.gov/VotingElections/Pages/default.aspx",PR:"https://ww2.ceepur.org/",RI:"https://vote.sos.ri.gov/",SC:"https://www.scvotes.org/",SD:"https://sdsos.gov/elections-voting/default.aspx",TN:"https://sos.tn.gov/elections",TX:"https://www.sos.state.tx.us/elections/index.shtml",VI:"https://vivote.gov/",UT:"https://vote.utah.gov/",VT:"https://sos.vermont.gov/elections/",VA:"https://www.elections.virginia.gov/",WA:"https://www.sos.wa.gov/elections",WV:"https://sos.wv.gov/elections/pages/default.aspx",WI:"https://myvote.wi.gov/en-us/",WY:"https://sos.wyo.gov/Elections/Default.aspx"};
+  function viewResults() {
+    const ed = D.meta.electionDay, today = new Date().toISOString().slice(0, 10);
+    const before = ed && today < ed;
+    const del = delegation(), races = del.filter(upForElection);
+    const site = S.state && STATE_ELECTION_SITES[S.state];
+    main.innerHTML = `
+      <a href="#/">‹ Your Delegation</a>
+      <div class="stack" style="gap:6px"><span class="eyebrow">Election${ed ? " · " + fmtDate(ed) : ""}</span><h1>Election results</h1>
+      <p class="muted" style="max-width:44rem">Results come from your state's official election office. Election-night numbers are unofficial until each state certifies them. WeHold doesn't declare winners.</p></div>
+      ${before ? `<p class="notice">Polls haven't closed yet. Results start appearing on your state's official site on the evening of ${fmtDate(ed)}. <a href="#/where">Find where and when to vote</a>.</p>` : ""}
+      ${S.state ? `<section class="card">
+        <span class="label muted">${esc(STATES[S.state] || S.state)}</span>
+        <h2>Your races for Congress</h2>
+        ${races.length ? `<ul class="list">${races.map((m) => `<li><span><strong>${m.chamber === "Senate" ? "U.S. Senate" : "U.S. House, " + (m.district ? m.state + "-" + m.district : m.state + " at large")}</strong><br><span class="muted" style="font-size:14px">Seat now held by ${esc(m.name)} (${esc(PARTY[m.party] || m.party)})</span></span></li>`).join("")}</ul>` : `<p class="muted">None of your current officials' seats are on this ballot.</p>`}
+        ${site ? `<a class="btn" style="align-self:flex-start" href="${esc(site)}" target="_blank" rel="noopener">${esc(STATES[S.state])} official election results</a>` : ""}
+        <p class="muted" style="font-size:13px">Look for "election night results" or "unofficial results" on the state's site. Your county election office also posts local results.</p>
+      </section>` : `<p><a href="#/">Add your ZIP code</a> to see your own races.</p>`}
+      <details class="card"><summary style="cursor:pointer;font-weight:700">Official results sites for every state</summary>
+        <ul class="list" style="margin-top:8px">${Object.keys(STATE_ELECTION_SITES).filter((k) => STATES[k]).sort((a, b) => STATES[a].localeCompare(STATES[b])).map((k) => `<li><a href="${esc(STATE_ELECTION_SITES[k])}" target="_blank" rel="noopener">${esc(STATES[k])}</a></li>`).join("")}</ul>
+        <p class="muted" style="font-size:13px">Links from USA.gov's directory of state election offices.</p>
+      </details>`;
+  }
+
   function viewAbout() {
     main.innerHTML = `
       <div class="stack" style="gap:6px"><span class="eyebrow">How it works</span><h1>Answerable to no party.</h1></div>
@@ -494,7 +546,7 @@
     const [path, qs] = raw.split("?");
     const params = new URLSearchParams(qs || "");
     const parts = path.split("/").filter(Boolean);
-    const nav = { "": "home", member: "home", write: "home", where: "where", votes: "votes", vote: "votes", charter: "charter", about: "about" }[parts[0] || ""];
+    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about" }[parts[0] || ""];
     document.querySelectorAll("[data-nav]").forEach((a) => (a.dataset.nav === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (parts[0] === "member") viewMember(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "votes") viewVotes();
@@ -503,6 +555,7 @@
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
     else if (parts[0] === "where") viewWhere();
+    else if (parts[0] === "results") viewResults();
     else viewHome();
     window.scrollTo(0, 0);
   }
