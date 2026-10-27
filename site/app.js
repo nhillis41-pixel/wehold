@@ -404,12 +404,13 @@
     const m = D.byId[id];
     if (!m) { main.innerHTML = `<p>We couldn't find that official. <a href="#/">Back</a></p>`; return; }
     const v = params.get("vote") ? D.votes.find((x) => x.id === params.get("vote")) : null;
+    const me = Object.assign({ email: "", street: S.street || "", zip: S.zip || "", phone: "" }, S.me || {});
     const st = { pos: params.get("pos") || "support", name: S.myName || "", town: S.myTown || "", topic: v ? v.title + (v.bill && !v.title.includes(v.bill.label) ? ` (${v.bill.label})` : "") : "", edited: false };
     const title = m.chamber === "Senate" ? "Senator" : m.title;
     const draft = () => {
       const stance = st.pos === "support" ? "I ask you to support" : st.pos === "oppose" ? "I ask you to oppose" : "I am still weighing";
       const topic = st.topic || "[the bill or issue]";
-      return `Dear ${title} ${m.last},\n\nAs your constituent in ${st.town || "[your town]"}, ${STATES[m.state]}, I'm writing about ${topic}. ${stance} it${st.pos === "undecided" ? ", and I would like to know where you stand and why" : ""}.\n\n[In your own words: why this matters to you, your family or your community.]\n\nRespectfully,\n${st.name || "[Your name]"}\n${st.town || "[Your town]"}, ${m.state}`;
+      return `Dear ${title} ${m.last},\n\nAs your constituent in ${st.town || "[your town]"}, ${STATES[m.state]}, I'm writing about ${topic}. ${stance} it${st.pos === "undecided" ? ", and I would like to know where you stand and why" : ""}.\n\n[In your own words: why this matters to you, your family or your community.]\n\nRespectfully,\n${st.name || "[Your name]"}\n${me.street ? me.street + "\n" : ""}${st.town || "[Your town]"}, ${m.state}${me.zip ? " " + me.zip : ""}${me.email ? "\n" + me.email : ""}${me.phone ? "\n" + me.phone : ""}`;
     };
     main.innerHTML = `
       <a href="${v ? "#/vote/" + esc(v.id) : "#/member/" + esc(m.id)}">‹ Back</a>
@@ -419,8 +420,15 @@
           <div><label class="f" for="topic">What it's about</label><input id="topic" type="text" value="${esc(st.topic)}" placeholder="A bill, nomination or issue"></div>
           <div><span class="f">Your position</span><div class="seg" role="group" aria-label="Your position">${[["support", "Support"], ["oppose", "Oppose"], ["undecided", "Undecided"]].map(([k, l]) => `<button type="button" data-p="${k}" aria-pressed="${st.pos === k}">${l}</button>`).join("")}</div></div>
           <div><label class="f" for="nm">Your name</label><input id="nm" type="text" autocomplete="name" value="${esc(st.name)}"></div>
-          <div><label class="f" for="tw">Your town</label><input id="tw" type="text" autocomplete="address-level2" value="${esc(st.town)}"></div>
-          <p class="muted" style="font-size:13px">Offices respond to constituents, so use the name and town where you live and vote.</p>
+          <div><label class="f" for="em">Your email</label><input id="em" type="email" autocomplete="email" value="${esc(me.email)}" placeholder="So the office can reply"></div>
+          <div><label class="f" for="sa">Street address</label><input id="sa" type="text" autocomplete="street-address" value="${esc(me.street)}"></div>
+          <div class="row" style="gap:10px;flex-wrap:nowrap">
+            <div style="flex:2"><label class="f" for="tw">Town</label><input id="tw" type="text" autocomplete="address-level2" value="${esc(st.town)}"></div>
+            <div style="flex:1"><label class="f" for="zp">ZIP</label><input id="zp" type="text" inputmode="numeric" maxlength="10" autocomplete="postal-code" value="${esc(me.zip)}"></div>
+          </div>
+          <div><label class="f" for="ph">Phone <span class="muted" style="font-weight:400">(optional)</span></label><input id="ph" type="tel" autocomplete="tel" value="${esc(me.phone)}"></div>
+          <label class="row" style="gap:8px;font-size:14px;align-items:center"><input type="checkbox" id="remember" ${S.rememberMe !== false ? "checked" : ""}> Remember my info on this device</label>
+          <p class="muted" style="font-size:13px">Offices only answer their own constituents, so they ask for your home address. Your info stays on this device; WeHold's servers never see it.${S.me ? ` <button type="button" class="linkbtn" id="forgetMe">Forget my info</button>` : ""}</p>
         </form>
         <div class="stack">
           <label class="f" for="letter">Your letter (edit freely)</label>
@@ -430,6 +438,7 @@
             ${m.phone ? `<a class="btn ghost" href="tel:${esc(m.phone)}">Call ${esc(m.phone)}</a>` : ""}
             <button class="btn ghost" type="button" id="print">Print to mail</button>
           </div>
+          <div id="formHelp" class="card noprint" hidden></div>
           ${m.phone ? `<details class="card noprint"><summary style="cursor:pointer;font-weight:700">Phone script (about 30 seconds)</summary><p id="script" style="margin-top:8px"></p></details>` : ""}
           <p class="muted" style="font-size:13px">Sent exactly as you wrote it, only when you choose. WeHold never sends anything on your behalf or keeps a copy.</p>
         </div>
@@ -442,13 +451,33 @@
     };
     ta.oninput = () => (st.edited = true);
     f.topic.oninput = () => { st.topic = f.topic.value; refresh(); };
-    f.nm.oninput = () => { st.name = S.myName = f.nm.value; save(); refresh(); };
-    f.tw.oninput = () => { st.town = S.myTown = f.tw.value; save(); refresh(); };
+    const persist = () => {
+      if (f.remember.checked) { S.myName = st.name; S.myTown = st.town; S.me = Object.assign({}, me); S.rememberMe = true; }
+      else { delete S.me; delete S.myName; delete S.myTown; S.rememberMe = false; }
+      save();
+    };
+    f.nm.oninput = () => { st.name = f.nm.value; persist(); refresh(); };
+    f.tw.oninput = () => { st.town = f.tw.value; persist(); refresh(); };
+    [["em", "email"], ["sa", "street"], ["zp", "zip"], ["ph", "phone"]].forEach(([el, k]) => (f[el].oninput = () => { me[k] = f[el].value.trim(); persist(); refresh(); }));
+    f.remember.onchange = persist;
+    const fm = document.getElementById("forgetMe");
+    if (fm) fm.onclick = () => { delete S.me; delete S.myName; delete S.myTown; delete S.street; save(); viewWrite(id, params); };
+    const copyText = async (t) => { try { await navigator.clipboard.writeText(t); toast("Copied."); } catch (e) { toast("Couldn't copy. Select it and copy instead."); } };
+    const showFormHelp = () => {
+      const fields = [["Name", st.name], ["Email", me.email], ["Street address", me.street], ["City", st.town], ["State", m.state], ["ZIP", me.zip], ["Phone", me.phone], ["Subject", st.topic]].filter(([, val]) => val);
+      const box = document.getElementById("formHelp");
+      box.hidden = false;
+      box.innerHTML = `<strong>Your details for ${esc(m.last)}'s form</strong><span class="muted" style="font-size:13px">The form opened in a new tab. Tap Copy next to each item, then paste it into the matching box. Your letter is already copied for the message box.</span>
+        ${fields.map(([l, val], i) => `<div class="row" style="justify-content:space-between;gap:10px;border-top:1px solid var(--rule);padding-top:8px"><span><span class="muted" style="font-size:12px;display:block">${esc(l)}</span>${esc(val)}</span><button type="button" class="btn small ghost" data-cp="${i}">Copy</button></div>`).join("")}
+        <div class="row" style="justify-content:space-between;gap:10px;border-top:1px solid var(--rule);padding-top:8px"><span><span class="muted" style="font-size:12px;display:block">Message</span>Your letter</span><button type="button" class="btn small ghost" data-cp="letter">Copy</button></div>`;
+      box.querySelectorAll("[data-cp]").forEach((b) => (b.onclick = () => copyText(b.dataset.cp === "letter" ? ta.value : fields[+b.dataset.cp][1])));
+    };
     f.querySelectorAll("[data-p]").forEach((b) => (b.onclick = () => { st.pos = b.dataset.p; f.querySelectorAll("[data-p]").forEach((x) => x.setAttribute("aria-pressed", x === b)); refresh(); }));
     const send = document.getElementById("send");
     if (send) send.onclick = async () => {
       try { await navigator.clipboard.writeText(ta.value); toast("Letter copied. Paste it into the form."); } catch (e) { ta.select(); toast("Select the letter and copy it, then paste it into the form."); }
       window.open(m.contact, "_blank", "noopener");
+      showFormHelp();
     };
     document.getElementById("print").onclick = () => window.print();
     refresh();
