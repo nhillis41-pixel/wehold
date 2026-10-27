@@ -1,8 +1,9 @@
+
 name: Update votes and publish site
 
 on:
   schedule:
-    - cron: "17 * * * *"   # daily, about 6–7 AM Central
+    - cron: "17 * * * *"   # every hour, so new roll calls show up quickly
   push:
     branches: [main]
   workflow_dispatch: {}
@@ -35,6 +36,8 @@ jobs:
           mv_if votes.json curated/votes.json
           mv_if download .gitignore
           mv_if http-message-signatures-directory site/.well-known/http-message-signatures-directory
+          for f in caslon-display.woff caslon-text.woff caslon-text-italic.woff public-sans.woff OFL-LibreCaslon.txt OFL-PublicSans.txt; do mv_if "$f" "site/fonts/$f"; done
+          for f in capitol.jpg citizens.jpg ballot.jpg; do mv_if "$f" "site/img/$f"; done
           git rm -q --ignore-unmatch update-and-deploy.yml
           if ! git diff --cached --quiet; then
             git config user.name "wehold-bot"
