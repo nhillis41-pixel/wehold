@@ -2,7 +2,7 @@ name: Update votes and publish site
 
 on:
   schedule:
-    - cron: "17 11 * * *"   # daily, about 6–7 AM Central
+    - cron: "17 * * * *"   # daily, about 6–7 AM Central
   push:
     branches: [main]
   workflow_dispatch: {}
