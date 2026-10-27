@@ -90,17 +90,27 @@
   // ---------- shared bits ----------
   const SEAL = `<svg class="seal" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="58" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width=".8"/>${Array.from({ length: 13 }, (_, k) => { const a = -Math.PI / 2 + (k * 2 * Math.PI) / 13; const x = 60 + 45 * Math.cos(a), y = 60 + 45 * Math.sin(a); const pts = Array.from({ length: 10 }, (_, i) => { const r = i % 2 ? 1.45 : 3.6, b = -Math.PI / 2 + (i * Math.PI) / 5; return `${(x + r * Math.cos(b)).toFixed(1)},${(y + r * Math.sin(b)).toFixed(1)}`; }).join(" "); return `<polygon points="${pts}" fill="currentColor"/>`; }).join("")}<path d="M40 86C50 66 66 48 88 32C84 50 70 68 46 84Z" fill="currentColor"/><path d="M40 86L33 95" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M30 90H78" stroke="currentColor"/></svg>`;
   const vpill = (p) => `<span class="v ${esc(p)}">${esc(LABEL[p] || p)}</span>`;
+  const initials = (m) => ((m.name || "").replace(/["“”].*?["“”]\s*/g, "").split(/\s+/).filter(Boolean).map((w) => w[0]).filter((c) => /[A-Z]/.test(c)).slice(0, 1).join("") + (m.last || "")[0]).toUpperCase();
   function memberCard(m) {
     const ms = matchStats(m), n = ms.agree.length + ms.diff.length;
-    const match = n ? `<div class="bar" aria-hidden="true"><i style="width:${(ms.agree.length / n) * 100}%"></i><b style="width:${(ms.diff.length / n) * 100}%"></b></div><span><strong>${ms.agree.length} of ${n}</strong> votes matched your stance</span>` : answeredCount() ? `<span class="muted">None of your stances have come to a vote in the ${m.chamber} yet.</span>` : `<span><a href="#/charter">Answer a few questions</a> <span class="muted">to see how often ${esc(m.last)} votes your way.</span></span>`;
-    const a = attOf(m);
-    return `<article class="card">
-      <div class="row" style="justify-content:space-between;align-items:flex-start"><a class="mtitle" href="#/member/${esc(m.id)}">${honor(m)} ${esc(m.name)}</a><span class="party">${esc(PARTY[m.party] || m.party)}</span></div>
-      <span class="muted">${esc(seatLine(m))}</span>
-      ${upForElection(m) ? `<span class="pill" style="align-self:flex-start">Seat up for election ${fmtDate(D.meta.electionDay)}</span>` : ""}
-      ${match}
-      <span>${attendanceLine(m)}${a && a.speaker ? ` <span class="muted">· As Speaker, votes rarely by tradition</span>` : ""}</span>
-      <div class="row"><a class="btn small" href="#/member/${esc(m.id)}">See the record</a><a class="btn small ghost" href="#/write/${esc(m.id)}">Write to ${esc(m.last)}</a></div>
+    const a = attOf(m), med = D.att && D.att.chambers[m.chamber] ? D.att.chambers[m.chamber].medianPct : null;
+    const matchFact = n
+      ? `<div class="fact"><span class="n">${ms.agree.length}<span class="muted" style="font-size:16px"> / ${n}</span></span><span class="t">votes matched your stance</span><div class="bar" aria-hidden="true" style="margin-top:6px"><i style="width:${(ms.agree.length / n) * 100}%"></i><b style="width:${(ms.diff.length / n) * 100}%"></b></div></div>`
+      : `<a class="fact" href="#/charter" style="text-decoration:none;color:inherit"><span class="n" style="font-size:18px;color:var(--navy)">Set your stances →</span><span class="t">${answeredCount() ? `None have come to a ${m.chamber} vote yet` : `See how often ${esc(m.last)} votes your way`}</span></a>`;
+    const attFact = a
+      ? `<div class="fact"><span class="n">${a.pct}%</span><span class="t">of votes missed<br>${num(a.missed)} of ${num(a.eligible)}${med != null ? ` · median ${med}%` : ""}</span></div>`
+      : `<div class="fact"><span class="n" style="font-size:18px">—</span><span class="t">${D.meta.unavailable && D.meta.unavailable[m.chamber] ? `${m.chamber} attendance coming soon` : "No recorded votes yet"}</span></div>`;
+    return `<article class="card member">
+      <div class="head">
+        <span class="mono" aria-hidden="true">${esc(initials(m))}</span>
+        <div class="stack" style="gap:2px;min-width:0;flex:1">
+          <a class="mtitle" href="#/member/${esc(m.id)}">${honor(m)} ${esc(m.name)}</a>
+          <span class="muted" style="font-size:14px">${esc(seatLine(m))}</span>
+        </div>
+      </div>
+      <div class="row" style="gap:6px"><span class="party">${esc(PARTY[m.party] || m.party)}</span>${upForElection(m) ? `<span class="pill">Up for election ${fmtDate(D.meta.electionDay)}</span>` : ""}${a && a.speaker ? `<span class="pill">Speaker · votes rarely by tradition</span>` : ""}</div>
+      <div class="facts">${matchFact}${attFact}</div>
+      <div class="actions"><a class="btn small" href="#/member/${esc(m.id)}">See the record</a><a class="btn small ghost" href="#/write/${esc(m.id)}">Write a letter</a></div>
     </article>`;
   }
   function voteCard(v, opts = {}) {
@@ -116,7 +126,7 @@
         ${v.related ? `<p class="muted" style="font-size:14px">${esc(v.related)}</p>` : ""}
         ${v.caution ? `<p class="caution">${esc(v.caution)}</p>` : ""}
         ${people.length ? `<div class="positions" aria-label="How your officials voted">${people.map((m) => { const c = you ? compare(m, v) : null; return `<span class="pos">${esc(m.last)} ${vpill(v.pos[m.id])}${c && c.kind === "agree" ? `<span class="match ok">✓ matches you</span>` : c && c.kind === "diff" ? `<span class="match no">✕ differs</span>` : ""}</span>`; }).join("")}</div>` : S.state ? "" : `<p class="muted" style="font-size:14px"><a href="#/">Add your ZIP code</a> to see how your own officials voted.</p>`}
-        <div class="row" style="font-size:14px"><a href="${esc(v.rec)}" target="_blank" rel="noopener">Official roll call</a>${v.bill ? `<a href="${esc(v.bill.url)}" target="_blank" rel="noopener">${esc(v.bill.label)} on Congress.gov</a>` : ""}<a href="#/vote/${esc(v.id)}">Tell your officials where you stand</a></div>
+        <div class="links"><a href="${esc(v.rec)}" target="_blank" rel="noopener">Official roll call</a>${v.bill ? `<a href="${esc(v.bill.url)}" target="_blank" rel="noopener">${esc(v.bill.label)} on Congress.gov</a>` : ""}<a href="#/vote/${esc(v.id)}">Tell your officials where you stand</a></div>
       </div></article>`;
   }
 
@@ -196,21 +206,35 @@
   function viewWelcome() {
     main.innerHTML = `
       <section class="hero">
-        <div class="stack" style="gap:16px">
-          ${SEAL}
-          <p class="quote" style="font-size:18px">“We hold these truths to be self-evident…”</p>
+        <figure class="art plate" style="margin:0"><img src="img/capitol.jpg" width="1100" height="829" alt="Engraving of the United States Capitol with citizens walking on the lawn"></figure>
+        <div class="stack" style="gap:18px">
+          <div class="row" style="gap:12px">${SEAL}<p class="quote" style="font-size:18px;flex:1;min-width:200px">“We hold these truths to be self-evident…”</p></div>
           <h1>They hold office.<br>We hold the power.</h1>
-          <p style="font-size:18px;color:var(--ink-2);max-width:34rem">See every vote your senators and representative cast, how often they show up, and how their record lines up with what you believe. Then tell them where you stand.</p>
-          <form id="zipForm" class="stack" style="max-width:460px">
-            <label class="f" for="zip">Your ZIP code</label>
-            <div class="row" style="flex-wrap:nowrap"><input id="zip" type="text" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" autocomplete="postal-code" placeholder="e.g. 37902" required value="${esc(S.zip || "")}"><button class="btn" type="submit" style="white-space:nowrap">Find my officials</button></div>
+          <p class="lede">See every vote your senators and representative cast, how often they show up, and how their record lines up with what you believe. Then tell them where you stand.</p>
+          <form id="zipForm" class="stack" style="gap:8px">
+            <label class="f" for="zip" style="margin:0">Your ZIP code</label>
+            <div class="zipbox"><input id="zip" type="text" inputmode="numeric" maxlength="5" pattern="[0-9]{5}" autocomplete="postal-code" placeholder="e.g. 37902" required value="${esc(S.zip || "")}"><button class="btn" type="submit" style="white-space:nowrap">Find my officials</button></div>
             <p id="zipMsg" role="status" class="muted"></p>
           </form>
-          <p class="muted" style="font-size:13px">Independent and nonpartisan. Not affiliated with any government agency or political party. Every vote comes from official House and Senate records.</p>
+          <p class="muted" style="font-size:13px">Independent and nonpartisan. Every vote comes from official House and Senate records.</p>
         </div>
-        <div class="engr" role="img" aria-label="Decorative engraving pattern">${SEAL.replace('class="seal"', 'class="seal" style="width:160px;height:160px;opacity:.85"')}</div>
       </section>
-      <div id="zipNext" class="stack"></div>`;
+      <div id="zipNext" class="stack"></div>
+      <div class="ornament" aria-hidden="true"><span>★ ★ ★</span></div>
+      <section>
+        <div class="sechead"><h2>Four articles of a citizen's power</h2></div>
+        <div class="articles">
+          <div class="card article"><span class="num">I.</span><h3>Know your delegation</h3><p class="muted">Your two senators and one representative: who they are and how to reach them.</p></div>
+          <div class="card article"><span class="num">II.</span><h3>Read the record</h3><p class="muted">Every vote, in plain English where it matters, with each Yea, Nay and missed vote.</p></div>
+          <div class="card article"><span class="num">III.</span><h3>Set your charter</h3><p class="muted">Answer yes-or-no questions tied to real votes and see who votes your way.</p></div>
+          <div class="card article"><span class="num">IV.</span><h3>Give your instruction</h3><p class="muted">Tell them where you stand, and find where and when to cast your vote.</p></div>
+        </div>
+      </section>
+      <section class="banner">
+        <figure class="plate" style="margin:0;width:100%"><img src="img/citizens.jpg" width="1600" height="686" loading="lazy" alt="Engraving of American citizens looking toward the Capitol"></figure>
+        <p class="quote">“We the People of the United States, in Order to form a more perfect Union…”</p>
+        <span class="label muted">Preamble to the Constitution, 1787</span>
+      </section>`;
     const f = document.getElementById("zipForm");
     f.onsubmit = async (e) => {
       e.preventDefault();
@@ -242,18 +266,21 @@
     const days = ed && today <= ed ? Math.round((new Date(ed + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5) : null;
     const onBallot = del.filter(upForElection).length;
     const recent = D.votes.slice(0, 3);
+    const resultsOn = ed && today >= ed && today <= ed.slice(0, 4) + "-12-31";
     main.innerHTML = `
-      <div class="row" style="justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:10px">
-        <div class="stack" style="gap:2px"><span class="label muted">${esc(placeName(S.state, S.district))}</span><h1>Your Delegation</h1></div>
-        <span class="quote">They work for you.</span>
-      </div>
-      ${days != null ? `<div class="band"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="1"/><path d="M8 10V4h8v6M10 7h4"/></svg><div class="stack" style="gap:0"><span class="k">Your next verdict</span><strong>Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ` · ${days} day${days === 1 ? "" : "s"}`}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are up for election.` : "None of your officials' seats are up this time."}</span></div></div>` : ""}
-      ${days != null ? `<a class="card" href="#/where" style="text-decoration:none;color:inherit;flex-direction:row;align-items:center;gap:14px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--red);flex:none"><path d="M12 21s-7-6.3-7-11.5A7 7 0 0 1 19 9.5C19 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting sites, from election officials.</span></span><span style="margin-left:auto;font-weight:800;color:var(--navy)">→</span></a>` : ""}
-      ${ed && today >= ed && today <= ed.slice(0, 4) + "-12-31" ? `<a class="card" href="#/results" style="text-decoration:none;color:inherit;flex-direction:row;align-items:center;gap:14px"><strong style="font-size:17px">Election results</strong><span class="muted" style="font-size:14px">Official, from your state's election office</span><span style="margin-left:auto;font-weight:800;color:var(--navy)">→</span></a>` : ""}
-      ${NO_SENATORS.has(S.state) ? `<p class="muted">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
+      <header class="pagehead">
+        <div class="sechead" style="align-items:flex-end"><span class="label muted">${esc(placeName(S.state, S.district))}</span><button class="linkbtn" id="changeLoc" style="font-size:14px">Change location</button></div>
+        <div class="sechead" style="align-items:flex-end"><h1>Your Delegation</h1><span class="quote">They work for you.</span></div>
+      </header>
+      ${days != null ? `<div class="band">
+        <div class="count">${days}<small>${days === 1 ? "day" : "days"}</small></div>
+        <div class="stack" style="gap:2px"><span class="k">Your next verdict</span><strong style="font-size:18px">Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ""}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are on the ballot.` : "None of your officials' seats are up this time."}</span></div>
+      </div>` : ""}
+      ${days != null ? `<a class="card linkcard" href="#/where"><span class="thumb plate"><img src="img/ballot.jpg" alt="" width="1000" height="753"></span><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting, from election officials.</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
+      ${resultsOn ? `<a class="card linkcard" href="#/results"><span class="stack" style="gap:2px"><strong style="font-size:17px">Election results</strong><span class="muted" style="font-size:14px">Official, from your state's election office</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
+      ${NO_SENATORS.has(S.state) ? `<p class="notice">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
       <div class="grid">${del.map(memberCard).join("") || `<p class="muted">We couldn't find officials for this location.</p>`}</div>
-      ${recent.length ? `<section class="stack"><div class="row" style="justify-content:space-between"><h2>Recently on the docket</h2><a href="#/votes">All tracked votes →</a></div>${recent.map((v) => voteCard(v)).join("")}</section>` : ""}
-      <p><button class="linkbtn" id="changeLoc">Change my location</button></p>`;
+      ${recent.length ? `<section><div class="sechead"><h2>Recently on the docket</h2><a href="#/votes">All votes →</a></div>${recent.map((v) => voteCard(v)).join("")}</section>` : ""}`;
     document.getElementById("changeLoc").onclick = () => { delete S.state; delete S.district; save(); render(); };
   }
 
@@ -265,7 +292,8 @@
     const med = D.att ? D.att.chambers[m.chamber].medianPct : null;
     main.innerHTML = `
       <a href="#/">‹ Your Delegation</a>
-      <div class="stack" style="text-align:center;border-top:3px double var(--ink);border-bottom:3px double var(--ink);padding:14px 0;gap:4px">
+      <div class="stack" style="text-align:center;align-items:center;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);padding:22px 0;gap:6px">
+        <span class="mono" aria-hidden="true" style="width:72px;height:72px;font-size:30px">${esc(initials(m))}</span>
         <span class="label muted">The record of</span>
         <h1>${esc(m.chamber === "Senate" ? "Senator" : m.title)} ${esc(m.name)}</h1>
         <span>${esc(seatLine(m))} · ${esc(PARTY[m.party] || m.party)} · Serving since ${fmtDate(m.start)}</span>
@@ -337,7 +365,7 @@
       body = `${D.meta.unavailable && D.meta.unavailable.Senate ? `<p class="notice">Senate key votes are copied by hand from the official Senate records and checked against the official totals. The Senate's website doesn't currently allow automated downloads, so Senate attendance isn't available yet while we request access. House votes and attendance are complete.</p>` : ""}` + (list.map((v) => voteCard(v)).join("") || `<p class="muted">No votes yet.</p>`);
     }
     main.innerHTML = `
-      <div class="stack" style="gap:6px"><h1>The Docket</h1><p class="muted" style="max-width:44rem">Key votes in plain English, plus every roll call as it happens. Each links to the official record.</p></div>
+      <header class="pagehead"><span class="eyebrow">The record</span><h1>The Docket</h1><p class="lede">Key votes in plain English, plus every roll call as it happens. Each links to the official record.</p></header>
       <div class="row">${seg("dview", mode, [["key", "Key votes"], ["latest", "Latest votes"]])}${seg("ch", ch, [["all", "Both"], ["Senate", "Senate"], ["House", "House"]])}</div>
       ${body}`;
     main.querySelectorAll("[data-ch]").forEach((b) => (b.onclick = () => { S.ch = b.dataset.ch; save(); viewVotes(); }));
@@ -359,7 +387,7 @@
   function viewCharter() {
     const done = answeredCount();
     main.innerHTML = `
-      <div class="stack" style="gap:6px;border-bottom:2px solid var(--ink);padding-bottom:10px"><h1>My Charter</h1><p class="quote">Set down where you stand. We hold every vote your officials cast against it.</p>
+      <div class="pagehead"><span class="eyebrow">Where you stand</span><h1>My Charter</h1><p class="quote">Set down where you stand. We hold every vote your officials cast against it.</p>
       <div class="row"><div class="bar" style="flex:1;min-width:160px"><i style="width:${D.questions.length ? (done / D.questions.length) * 100 : 0}%"></i></div><strong style="font-size:14px">${done} of ${D.questions.length} answered</strong></div></div>
       ${D.questions.map((q) => { const a = S.answers[q.id]; const tied = q.votes.map((l) => D.votes.find((v) => v.id === l.vote)).filter(Boolean); return `<div class="card"><p style="font-weight:700;font-size:17px">${esc(q.text)}</p>
         <div class="seg" role="group" aria-label="Your answer">${[["yes", "Yes"], ["no", "No"], ["skip", "Not sure"]].map(([k, l]) => `<button type="button" data-q="${esc(q.id)}" data-a="${k}" aria-pressed="${a === k}">${l}</button>`).join("")}</div>
@@ -454,7 +482,8 @@
     const ed = D.meta.electionDay;
     main.innerHTML = `
       <a href="#/">‹ Your Delegation</a>
-      <div class="stack" style="gap:6px"><span class="eyebrow">Your verdict${ed ? " · " + fmtDate(ed) : ""}</span><h1>Where and when to vote</h1>
+      <figure class="plate" style="margin:0;max-height:260px"><img src="img/ballot.jpg" width="1000" height="753" alt="Engraving of a wooden ballot box beside a quill and inkwell" style="height:260px;width:100%;object-fit:cover;object-position:50% 45%"></figure>
+      <div class="pagehead"><span class="eyebrow">Your verdict${ed ? " · " + fmtDate(ed) : ""}</span><h1>Where and when to vote</h1>
       <p class="muted" style="max-width:44rem">Enter the address where you're registered to vote. Locations and hours come from state and local election officials through the Voting Information Project.</p></div>
       ${key ? `<form class="card" id="whereForm" style="max-width:560px">
         <div><label class="f" for="waddr">Your registered home address</label><input id="waddr" type="text" autocomplete="street-address" placeholder="400 Main St, Knoxville, TN 37902" required></div>
@@ -510,7 +539,7 @@
     const site = S.state && STATE_ELECTION_SITES[S.state];
     main.innerHTML = `
       <a href="#/">‹ Your Delegation</a>
-      <div class="stack" style="gap:6px"><span class="eyebrow">Election${ed ? " · " + fmtDate(ed) : ""}</span><h1>Election results</h1>
+      <div class="pagehead"><span class="eyebrow">Election${ed ? " · " + fmtDate(ed) : ""}</span><h1>Election results</h1>
       <p class="muted" style="max-width:44rem">Results come from your state's official election office. Election-night numbers are unofficial until each state certifies them. WeHold doesn't declare winners.</p></div>
       ${before ? `<p class="notice">Polls haven't closed yet. Results start appearing on your state's official site on the evening of ${fmtDate(ed)}. <a href="#/where">Find where and when to vote</a>.</p>` : ""}
       ${S.state ? `<section class="card">
@@ -528,7 +557,8 @@
 
   function viewAbout() {
     main.innerHTML = `
-      <div class="stack" style="gap:6px"><span class="eyebrow">How it works</span><h1>Answerable to no party.</h1></div>
+      <figure class="plate" style="margin:0"><img src="img/citizens.jpg" width="1600" height="686" alt="Engraving of American citizens looking toward the Capitol"></figure>
+      <header class="pagehead"><span class="eyebrow">How it works</span><h1>Answerable to no party.</h1><p class="lede">WeHold shows the public record of the people who represent you, from official sources, and leaves the judgment to you.</p></header>
       <div class="grid">
         <section class="card"><h3>Official sources only</h3><p>Every vote comes from the official records published by the <a href="https://clerk.house.gov/Votes" target="_blank" rel="noopener">Clerk of the House</a> and the <a href="https://www.senate.gov/legislative/votes_new.htm" target="_blank" rel="noopener">U.S. Senate</a>, checked every day. Member information comes from the public-domain <a href="https://github.com/unitedstates/congress-legislators" target="_blank" rel="noopener">congress-legislators</a> project. Bill text links go to Congress.gov.</p></section>
         <section class="card"><h3>Checked before it's published</h3><p>Each day's update adds up every member's vote on every roll call and compares the result with the official totals. Senate votes are also checked against the Senate's own vote list. If anything disagrees, nothing is published until it's fixed.</p></section>
