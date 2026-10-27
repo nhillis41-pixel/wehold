@@ -19,6 +19,11 @@ def load_config():
         return json.load(f)
 
 
+def _bot_signer():
+    import botauth
+    return botauth.signer(load_config().get("botAgentOrigin", "https://nhillis41-pixel.github.io"))
+
+
 class NotFound(Exception):
     pass
 
@@ -27,7 +32,11 @@ def fetch(url, retries=4, pause=0.4):
     """GET a URL politely. Raises NotFound on 404, RuntimeError after repeated failures."""
     last = None
     for attempt in range(retries):
-        req = urllib.request.Request(url, headers=HEADERS)
+        headers = dict(HEADERS)
+        sg = _bot_signer()
+        if sg:
+            headers.update(sg.headers(url))  # Web Bot Auth: lets sites verify this is WeHold's registered bot
+        req = urllib.request.Request(url, headers=headers)
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
                 data = r.read()
