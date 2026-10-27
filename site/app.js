@@ -248,6 +248,7 @@
         <span class="quote">They work for you.</span>
       </div>
       ${days != null ? `<div class="band"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="1"/><path d="M8 10V4h8v6M10 7h4"/></svg><div class="stack" style="gap:0"><span class="k">Your next verdict</span><strong>Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ` · ${days} day${days === 1 ? "" : "s"}`}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are up for election.` : "None of your officials' seats are up this time."}</span></div></div>` : ""}
+      ${days != null ? `<a class="card" href="#/where" style="text-decoration:none;color:inherit;flex-direction:row;align-items:center;gap:14px"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="color:var(--red);flex:none"><path d="M12 21s-7-6.3-7-11.5A7 7 0 0 1 19 9.5C19 14.7 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting sites, from election officials.</span></span><span style="margin-left:auto;font-weight:800;color:var(--navy)">→</span></a>` : ""}
       ${NO_SENATORS.has(S.state) ? `<p class="muted">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
       <div class="grid">${del.map(memberCard).join("") || `<p class="muted">We couldn't find officials for this location.</p>`}</div>
       ${recent.length ? `<section class="stack"><div class="row" style="justify-content:space-between"><h2>Recently on the docket</h2><a href="#/votes">All tracked votes →</a></div>${recent.map((v) => voteCard(v)).join("")}</section>` : ""}
@@ -397,6 +398,82 @@
     refresh();
   }
 
+  // ---------- where to vote (Google Civic Information API; data from election officials via the Voting Information Project) ----------
+  const OFFICIAL_FALLBACK = "https://www.usa.gov/election-office";
+  const fmtAddr = (a) => [a.locationName, a.line1, a.line2, a.line3, [a.city, a.state].filter(Boolean).join(", ") + (a.zip ? " " + a.zip : "")].filter((x) => x && x.trim()).map(esc).join("<br>");
+  const mapLink = (loc) => { const a = loc.address || {}; const q = loc.latitude && loc.longitude ? `${loc.latitude},${loc.longitude}` : [a.line1, a.city, a.state, a.zip].filter(Boolean).join(" "); return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(q)}`; };
+  const safeUrl = (u) => (/^https?:\/\//i.test(u || "") ? u : null);
+  function locationCard(loc, kind) {
+    const src = (loc.sources || []).map((x) => esc(x.name) + (x.official ? " (official)" : "")).join(", ");
+    const dates = loc.startDate || loc.endDate ? `<span><strong>Dates:</strong> ${fmtDate(loc.startDate)}${loc.endDate && loc.endDate !== loc.startDate ? " – " + fmtDate(loc.endDate) : ""}</span>` : "";
+    return `<article class="card">
+      <span class="label muted">${esc(kind)}</span>
+      <span class="mtitle" style="font-size:18px">${fmtAddr(loc.address || {}) || esc(loc.name || "Location")}</span>
+      ${dates}
+      ${loc.pollingHours ? `<span><strong>Hours:</strong> ${esc(loc.pollingHours)}</span>` : `<span class="muted">Hours not provided. Check with your election office.</span>`}
+      ${loc.notes ? `<span class="muted" style="font-size:14px">${esc(loc.notes)}</span>` : ""}
+      ${src ? `<span class="muted" style="font-size:13px">Source: ${src}</span>` : ""}
+      <a class="btn small ghost" style="align-self:flex-start" href="${esc(mapLink(loc))}" target="_blank" rel="noopener">Get directions</a>
+    </article>`;
+  }
+  function officeCard(body, label) {
+    if (!body) return "";
+    const links = [["votingLocationFinderUrl", "Official polling place lookup"], ["electionInfoUrl", "Election information"], ["electionRegistrationConfirmationUrl", "Check your registration"], ["absenteeVotingInfoUrl", "Absentee / mail voting"]]
+      .map(([k, l]) => safeUrl(body[k]) ? `<a href="${esc(body[k])}" target="_blank" rel="noopener">${l}</a>` : "").filter(Boolean).join("");
+    const phones = (body.electionOfficials || []).filter((o) => o.officePhoneNumber).map((o) => `<a href="tel:${esc(o.officePhoneNumber)}">${esc(o.officePhoneNumber)}</a>${o.title ? ` <span class="muted">(${esc(o.title)})</span>` : ""}`).join("<br>");
+    return `<article class="card"><span class="label muted">${esc(label)}</span><span class="mtitle" style="font-size:18px">${esc(body.name || "Election office")}</span>${body.hoursOfOperation ? `<span><strong>Office hours:</strong> ${esc(body.hoursOfOperation)}</span>` : ""}${phones ? `<span>${phones}</span>` : ""}${links ? `<div class="stack" style="gap:6px">${links}</div>` : ""}</article>`;
+  }
+  function viewWhere() {
+    const key = D.meta.civicApiKey;
+    const ed = D.meta.electionDay;
+    main.innerHTML = `
+      <a href="#/">‹ Your Delegation</a>
+      <div class="stack" style="gap:6px"><span class="eyebrow">Your verdict${ed ? " · " + fmtDate(ed) : ""}</span><h1>Where and when to vote</h1>
+      <p class="muted" style="max-width:44rem">Enter the address where you're registered to vote. Locations and hours come from state and local election officials through the Voting Information Project.</p></div>
+      ${key ? `<form class="card" id="whereForm" style="max-width:560px">
+        <div><label class="f" for="waddr">Your registered home address</label><input id="waddr" type="text" autocomplete="street-address" placeholder="400 Main St, Knoxville, TN 37902" required></div>
+        <button class="btn" type="submit">Find my polling place</button>
+        <p class="muted" style="font-size:13px">Your address is sent only to Google's Civic Information service to look up your voting locations. WeHold doesn't store it.</p>
+      </form>` : ""}
+      <div id="whereOut" class="stack" aria-live="polite"></div>
+      <div class="notice stack">
+        <strong>Always confirm with your election office.</strong>
+        <span>Polling places and hours can change right up to Election Day. Your state or county election office has the final word.</span>
+        <a href="${OFFICIAL_FALLBACK}" target="_blank" rel="noopener">Find your state or local election office (USA.gov)</a>
+      </div>`;
+    const f = document.getElementById("whereForm"); if (!f) return;
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const out = document.getElementById("whereOut");
+      out.innerHTML = `<p class="muted">Looking up your voting locations…</p>`;
+      let data;
+      try {
+        const r = await fetch(`https://www.googleapis.com/civicinfo/v2/voterinfo?key=${encodeURIComponent(key)}&address=${encodeURIComponent(f.waddr.value.trim())}`);
+        data = await r.json();
+        if (!r.ok) {
+          const msg = (data && data.error && data.error.message) || "";
+          out.innerHTML = `<p class="notice">${/parse|address/i.test(msg) ? "We couldn't match that address. Include the street, city, state and ZIP code." : "There's no voting information for this address right now. That doesn't mean you can't vote; it may not be published yet. Use the official link below."}</p>`;
+          return;
+        }
+      } catch (err) {
+        out.innerHTML = `<p class="notice">The lookup service didn't respond. Try again, or use the official link below.</p>`;
+        return;
+      }
+      const st = (data.state || [])[0] || {};
+      const polls = data.pollingLocations || [], early = data.earlyVoteSites || [], drop = data.dropOffLocations || [];
+      const el = data.election || {};
+      const others = (data.otherElections || []).map((o) => esc(o.name)).join(", ");
+      out.innerHTML = `
+        ${el.name ? `<div class="band"><div class="stack" style="gap:0"><span class="k">Election</span><strong>${esc(el.name)}${el.electionDay ? " · " + fmtDate(el.electionDay) : ""}</strong>${others ? `<span style="opacity:.85;font-size:14px">Also on file: ${others}</span>` : ""}</div></div>` : ""}
+        ${data.mailOnly ? `<p class="notice">Voters at this address vote by mail. See your election office for ballot return and drop-off options.</p>` : ""}
+        ${polls.length ? `<h2>Election Day polling place</h2><div class="grid">${polls.map((l) => locationCard(l, "Election Day")).join("")}</div>` : `<p class="notice">No Election Day polling place is on file for this address yet. Use your state's official lookup below.</p>`}
+        ${early.length ? `<h2>Early voting</h2><div class="grid">${early.map((l) => locationCard(l, "Early voting")).join("")}</div>` : ""}
+        ${drop.length ? `<h2>Ballot drop-off</h2><div class="grid">${drop.map((l) => locationCard(l, "Drop-off")).join("")}</div>` : ""}
+        <h2>Your election offices</h2>
+        <div class="grid">${officeCard(st.local_jurisdiction && st.local_jurisdiction.electionAdministrationBody, "Local") || ""}${officeCard(st.electionAdministrationBody, "State")}</div>`;
+    };
+  }
+
   function viewAbout() {
     main.innerHTML = `
       <div class="stack" style="gap:6px"><span class="eyebrow">How it works</span><h1>Answerable to no party.</h1></div>
@@ -417,7 +494,7 @@
     const [path, qs] = raw.split("?");
     const params = new URLSearchParams(qs || "");
     const parts = path.split("/").filter(Boolean);
-    const nav = { "": "home", member: "home", write: "home", votes: "votes", vote: "votes", charter: "charter", about: "about" }[parts[0] || ""];
+    const nav = { "": "home", member: "home", write: "home", where: "where", votes: "votes", vote: "votes", charter: "charter", about: "about" }[parts[0] || ""];
     document.querySelectorAll("[data-nav]").forEach((a) => (a.dataset.nav === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (parts[0] === "member") viewMember(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "votes") viewVotes();
@@ -425,6 +502,7 @@
     else if (parts[0] === "charter") viewCharter();
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
+    else if (parts[0] === "where") viewWhere();
     else viewHome();
     window.scrollTo(0, 0);
   }

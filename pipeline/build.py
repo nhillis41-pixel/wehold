@@ -123,6 +123,7 @@ def main():
     meta.update({
         "congress": cfg["congress"],
         "electionDay": cfg["electionDay"],
+        "civicApiKey": cfg.get("civicApiKey", ""),  # browser key, restricted to WeHold's website in Google Cloud
         "updated": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
         "rolls": {"House": att["chambers"]["House"]["rolls"], "Senate": att["chambers"]["Senate"]["rolls"]},
         "latest": {ch: max((r["date"] for r in rolls.values() if r["ch"] == ch), default=None) for ch in ("House", "Senate")},
