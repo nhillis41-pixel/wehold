@@ -165,10 +165,10 @@
   function addressForm(zip, note) {
     return `<form class="card" id="addrForm" style="max-width:560px">
       ${note ? `<p>${note}</p>` : ""}
-      <div><label class="f" for="street">Street address</label><input id="street" type="text" autocomplete="street-address" placeholder="e.g. 400 Main St" required></div>
+      <div><label class="f" for="street">Street address</label><input id="street" type="text" autocomplete="street-address" placeholder="e.g. 400 Main St" value="${esc(S.street || "")}" required></div>
       <div><label class="f" for="azip">ZIP code</label><input id="azip" type="text" inputmode="numeric" maxlength="5" autocomplete="postal-code" value="${esc(zip || "")}" required></div>
       <button class="btn" type="submit">Find my district</button>
-      <p class="muted" style="font-size:13px">Your address goes only to the U.S. Census Bureau's free lookup service to find your district. WeHold never stores it.</p>
+      <p class="muted" style="font-size:13px">Your address goes only to the U.S. Census Bureau's free lookup service to find your district. It's remembered only on this device, so you won't have to type it again.</p>
       <p id="addrMsg" role="status"></p>
     </form>`;
   }
@@ -181,6 +181,8 @@
       try {
         const r = await geocode(f.street.value.trim(), f.azip.value.trim());
         if (!r) { msg.textContent = "The Census lookup couldn't match that address. Check the spelling, or choose your district below."; return; }
+        S.street = f.street.value.trim();
+        if (!S.voteAddr) S.voteAddr = `${S.street}, ${r.st} ${f.azip.value.trim()}`;
         setLocation(r.st, r.d, f.azip.value.trim());
       } catch (err) { msg.textContent = "The Census lookup didn't respond. Try again, or choose your district below."; }
     };
@@ -486,9 +488,10 @@
       <div class="pagehead"><span class="eyebrow">Your verdict${ed ? " · " + fmtDate(ed) : ""}</span><h1>Where and when to vote</h1>
       <p class="muted" style="max-width:44rem">Enter the address where you're registered to vote. Locations and hours come from state and local election officials through the Voting Information Project.</p></div>
       ${key ? `<form class="card" id="whereForm" style="max-width:560px">
-        <div><label class="f" for="waddr">Your registered home address</label><input id="waddr" type="text" autocomplete="street-address" placeholder="400 Main St, Knoxville, TN 37902" required></div>
+        <div><label class="f" for="waddr">Your registered home address</label><input id="waddr" type="text" autocomplete="street-address" placeholder="400 Main St, Knoxville, TN 37902" value="${esc(S.voteAddr || "")}" required></div>
+        <label class="row" style="gap:8px;font-size:14px;align-items:center"><input type="checkbox" id="wremember" ${S.voteAddr || S.rememberAddr !== false ? "checked" : ""}> Remember this address on this device</label>
         <button class="btn" type="submit">Find my polling place</button>
-        <p class="muted" style="font-size:13px">Your address is sent only to Google's Civic Information service to look up your voting locations. WeHold doesn't store it.</p>
+        <p class="muted" style="font-size:13px">Your address is sent only to Google's Civic Information service to look up your voting locations. If you check "Remember," it's saved only on this device, never on WeHold's servers.${S.voteAddr ? ` <button type="button" class="linkbtn" id="wforget">Forget my address</button>` : ""}</p>
       </form>` : ""}
       <div id="whereOut" class="stack" aria-live="polite"></div>
       <div class="notice stack">
@@ -501,14 +504,34 @@
     f.onsubmit = async (e) => {
       e.preventDefault();
       const out = document.getElementById("whereOut");
+      const addr = f.waddr.value.trim().replace(/\s+/g, " ");
+      if (/^\d{5}(-\d{4})?$/.test(addr) || !/\d/.test(addr) || addr.split(/[ ,]+/).length < 3) {
+        out.innerHTML = `<p class="notice">Polling places are assigned by street address, so a ZIP code or city alone isn't enough. Type your full street address with city, state and ZIP, for example: 400 Main St, Knoxville, TN 37902.</p>`;
+        return;
+      }
+      const remember = document.getElementById("wremember").checked;
+      S.rememberAddr = remember;
+      if (remember) S.voteAddr = addr; else delete S.voteAddr;
+      save();
       out.innerHTML = `<p class="muted">Looking up your voting locations…</p>`;
       let data;
       try {
-        const r = await fetch(`https://www.googleapis.com/civicinfo/v2/voterinfo?key=${encodeURIComponent(key)}&address=${encodeURIComponent(f.waddr.value.trim())}`);
+        const r = await fetch(`https://www.googleapis.com/civicinfo/v2/voterinfo?key=${encodeURIComponent(key)}&address=${encodeURIComponent(addr)}`);
         data = await r.json();
         if (!r.ok) {
-          const msg = (data && data.error && data.error.message) || "";
-          out.innerHTML = `<p class="notice">${/parse|address/i.test(msg) ? "We couldn't match that address. Include the street, city, state and ZIP code." : "There's no voting information for this address right now. That doesn't mean you can't vote; it may not be published yet. Use the official link below."}</p>`;
+          const msg = (data && data.error && data.error.message) || ("HTTP " + r.status);
+          console.warn("Civic API error:", r.status, msg);
+          let text;
+          if (r.status === 403 || /referer|api key|permission|disabled|blocked/i.test(msg)) {
+            text = "The polling place lookup isn't set up correctly on our end yet (the lookup key was refused). This isn't a problem with your address. Use the official link below for now.";
+          } else if (/election unknown|no election/i.test(msg)) {
+            text = "Election officials haven't published polling places for an upcoming election at this address yet. Use the official link below.";
+          } else if (/parse|address/i.test(msg)) {
+            text = "We couldn't match that address. Type your full street address with city, state and ZIP, for example: 400 Main St, Knoxville, TN 37902.";
+          } else {
+            text = "There's no voting information for this address right now. That doesn't mean you can't vote; it may not be published yet. Use the official link below.";
+          }
+          out.innerHTML = `<p class="notice">${text}<br><span class="muted" style="font-size:12px">Lookup service said: ${esc(msg)}</span></p>`;
           return;
         }
       } catch (err) {
@@ -528,6 +551,9 @@
         <h2>Your election offices</h2>
         <div class="grid">${officeCard(st.local_jurisdiction && st.local_jurisdiction.electionAdministrationBody, "Local") || ""}${officeCard(st.electionAdministrationBody, "State")}</div>`;
     };
+    const fg = document.getElementById("wforget");
+    if (fg) fg.onclick = () => { delete S.voteAddr; delete S.street; S.rememberAddr = false; save(); viewWhere(); };
+    if (S.voteAddr) f.requestSubmit ? f.requestSubmit() : f.dispatchEvent(new Event("submit", { cancelable: true }));
   }
 
   // ---------- election results: official state sources only; WeHold never calls a race ----------
