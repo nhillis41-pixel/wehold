@@ -13,10 +13,11 @@
  "unavailable": {
   "Senate": "Could not reach the official source on the last update."
  },
- "updated": "2026-10-27T17:36Z",
+ "updated": "2026-10-27T17:47Z",
  "warnings": 0,
  "zips": {
   "split": 5346,
   "zips": 33791
- }
+ },
+ "zipsUpdated": "2026-10-27"
 }
