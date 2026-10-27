@@ -13,5 +13,6 @@
   "electionDay": "2026-11-03",
   "zipRelationshipUrl": "https://www2.census.gov/geo/docs/maps-data/data/rel2020/cd-sld/tab20_cd11920_zcta520_natl.txt",
   "legislatorsRepo": "https://github.com/unitedstates/congress-legislators.git",
-  "botAgentOrigin": "https://nhillis41-pixel.github.io"
+  "botAgentOrigin": "https://nhillis41-pixel.github.io",
+  "civicApiKey": "AIzaSyAoa2gNuyVyEhAWpNdjD70v6Jh8pPG56yw"
 }
