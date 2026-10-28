@@ -1,0 +1,110 @@
+name: Update votes and publish site
+
+on:
+  schedule:
+    - cron: "17 * * * *"   # every hour, so new roll calls show up quickly
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: wehold-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Set up git identity and a safe push helper
+        run: |
+          git config --global user.name "wehold-bot"
+          git config --global user.email "wehold-bot@users.noreply.github.com"
+          git config --global pull.rebase true
+          git config --global rebase.autoStash true
+          # Pull any commits made while this run was working, put ours on top, then push.
+          # Tries up to 5 times in case someone pushes again in the meantime.
+          cat > "$RUNNER_TEMP/safe_push.sh" <<'EOF'
+          #!/usr/bin/env bash
+          set -e
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then exit 0; fi
+            echo "Push rejected (attempt $i). Retrying..."
+            sleep $((i * 5))
+          done
+          echo "Could not push after 5 attempts."
+          exit 1
+          EOF
+          chmod +x "$RUNNER_TEMP/safe_push.sh"
+
+      - name: Put uploaded files in their folders (only needed once)
+        run: |
+          set -e
+          mv_if() { if [ -f "$1" ]; then mkdir -p "$(dirname "$2")"; git mv -f "$1" "$2"; fi; }
+          for f in common.py members.py votes.py attendance.py zips.py validate.py build.py botauth.py requirements.txt; do mv_if "$f" "pipeline/$f"; done
+          mv_if test_pipeline.py pipeline/tests/test_pipeline.py
+          mv_if house_roll.xml pipeline/tests/fixtures/house_roll.xml
+          mv_if senate_roll.xml pipeline/tests/fixtures/senate_roll.xml
+          for f in app.js styles.css index.html icon.svg manifest.webmanifest; do mv_if "$f" "site/$f"; done
+          mv_if votes.json curated/votes.json
+          mv_if download .gitignore
+          mv_if http-message-signatures-directory site/.well-known/http-message-signatures-directory
+          for f in caslon-display.woff caslon-text.woff caslon-text-italic.woff public-sans.woff OFL-LibreCaslon.txt OFL-PublicSans.txt; do mv_if "$f" "site/fonts/$f"; done
+          for f in capitol.jpg citizens.jpg ballot.jpg; do mv_if "$f" "site/img/$f"; done
+          git rm -q --ignore-unmatch update-and-deploy.yml
+          if ! git diff --cached --quiet; then
+            git commit -m "Organize uploaded files into folders"
+            "$RUNNER_TEMP/safe_push.sh"
+          fi
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Run tests
+        run: python pipeline/tests/test_pipeline.py
+
+      - name: Fetch official votes, check them, build site data
+        env:
+          WEHOLD_BOT_KEY: ${{ secrets.WEHOLD_BOT_KEY }}
+        run: python pipeline/build.py
+
+      - name: Save updated data
+        if: always()
+        run: |
+          for p in data site/data; do if [ -e "$p" ]; then git add "$p"; fi; done
+          if git diff --cached --quiet; then
+            echo "No new data."
+          else
+            git commit -m "Update vote data $(date -u +%Y-%m-%d)"
+            "$RUNNER_TEMP/safe_push.sh"
+          fi
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+  deploy:
+    needs: update
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
