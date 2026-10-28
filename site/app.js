@@ -17,7 +17,8 @@
     get() { try { return JSON.parse(localStorage.getItem("wehold") || "{}"); } catch (e) { return {}; } },
     set(v) { try { localStorage.setItem("wehold", JSON.stringify(v)); } catch (e) { /* private mode: keep in memory */ } },
   };
-  const S = Object.assign({ answers: {} }, store.get());
+  const S = Object.assign({ answers: {}, exceptions: {} }, store.get());
+  if (!S.exceptions) S.exceptions = {};
   const save = () => store.set(S);
 
   function toast(msg) {
@@ -27,20 +28,27 @@
   }
 
   // ---------- data ----------
-  const D = { members: [], byId: {}, votes: [], questions: [], att: null, meta: {}, rolls: null };
+  const D = { members: [], byId: {}, votes: [], questions: [], principles: [], PM: {}, att: null, meta: {}, rolls: null };
   async function getJSON(path) {
     const r = await fetch(path, { cache: "no-cache" });
     if (!r.ok) throw new Error(path + " " + r.status);
     return r.json();
   }
   async function loadData() {
-    const [m, v, a, meta] = await Promise.allSettled([getJSON("data/members.json"), getJSON("data/votes.json"), getJSON("data/attendance.json"), getJSON("data/meta.json")]);
+    const [m, v, a, meta, stn] = await Promise.allSettled([getJSON("data/members.json"), getJSON("data/votes.json"), getJSON("data/attendance.json"), getJSON("data/meta.json"), getJSON("stances.json")]);
     if (m.status === "fulfilled") { D.members = m.value; D.members.forEach((x) => (D.byId[x.id] = x)); }
     if (v.status === "fulfilled") { D.votes = v.value.votes || []; D.questions = v.value.questions || []; }
     if (a.status === "fulfilled") D.att = a.value;
     if (meta.status === "fulfilled") D.meta = meta.value;
+    // Broad stance questions, plus status and principle links for bill questions (site/stances.json).
+    const sx = stn.status === "fulfilled" ? stn.value : {};
+    D.principles = sx.principles || [];
+    D.principles.forEach((p) => (D.PM[p.id] = p));
+    const qx = sx.questions || {};
+    D.questions.forEach((q) => { const x = qx[q.id] || {}; q.status = q.status || x.status || "current"; q.tests = q.tests || x.tests || []; q.votes = q.votes || []; });
+    (sx.upcoming || []).forEach((q) => { if (!D.questions.some((y) => y.id === q.id)) D.questions.push(Object.assign({ status: "upcoming", tests: [], votes: [] }, q)); });
     const up = document.getElementById("updated");
-    if (D.meta.updated) up.textContent = "Votes checked " + new Date(D.meta.updated).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+    if (up && D.meta.updated) up.textContent = "Votes checked " + new Date(D.meta.updated).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
   }
   async function loadRolls() { if (!D.rolls) D.rolls = await getJSON("data/rolls.json").catch(() => ({})); return D.rolls; }
 
@@ -64,13 +72,35 @@
     const today = new Date().toISOString().slice(0, 10);
     return today <= ed && m.end === `${Number(ed.slice(0, 4)) + 1}-01-03`;
   }
+  const yn = (a) => a === "yes" || a === "no";
+  const YN = (a) => (a === "yes" ? "Yes" : "No");
+  const flipPos = (p) => (p === "Yea" ? "Nay" : "Yea");
   function linkFor(voteId) { for (const q of D.questions) for (const l of q.votes) if (l.vote === voteId) return { q, yes: l.yes }; return null; }
+  // The user's own answer that applies to a vote: their answer on the bill question first,
+  // otherwise their answer on a broad question that the bill directly tests. Never a guess.
+  function userStance(v) {
+    const L = linkFor(v.id);
+    if (L && yn(S.answers[L.q.id])) return { a: S.answers[L.q.id], yesPos: L.yes, label: `You said ${YN(S.answers[L.q.id])}` };
+    if (L) for (const t of L.q.tests || []) {
+      const p = D.PM[t.p], a = S.answers[t.p];
+      if (p && yn(a)) return { a, yesPos: t.yes === "yes" ? L.yes : flipPos(L.yes), label: `You said ${YN(a)} on #${p.n}` };
+    }
+    for (const t of v.tests || []) {
+      const p = D.PM[t.p], a = S.answers[t.p];
+      if (p && yn(a)) return { a, yesPos: t.yes, label: `You said ${YN(a)} on #${p.n}` };
+    }
+    return null;
+  }
   function compare(m, v) {
-    const L = linkFor(v.id); if (!L) return null;
-    const a = S.answers[L.q.id]; if (a !== "yes" && a !== "no") return null;
+    const u = userStance(v); if (!u) return null;
     const p = v.pos[m.id]; if (!p) return null;
-    if (p !== "Yea" && p !== "Nay") return { q: L.q, a, p, kind: "miss" };
-    return { q: L.q, a, p, kind: (p === L.yes) === (a === "yes") ? "agree" : "diff" };
+    if (p !== "Yea" && p !== "Nay") return { ...u, p, kind: "miss" };
+    return { ...u, p, kind: (p === u.yesPos) === (u.a === "yes") ? "agree" : "diff" };
+  }
+  // Suggested answer on a bill question, from the user's broad answers. Shown as a suggestion only; never counted.
+  function leanFor(q) {
+    for (const t of q.tests || []) { const p = D.PM[t.p], a = S.answers[t.p]; if (p && yn(a)) return { lean: a === t.yes ? "yes" : "no", p }; }
+    return null;
   }
   function matchStats(m) {
     const cmp = D.votes.map((v) => ({ v, c: compare(m, v) })).filter((x) => x.c);
@@ -85,7 +115,7 @@
     const med = D.att.chambers[m.chamber].medianPct;
     return `Missed <strong>${num(a.missed)}</strong> of ${num(a.eligible)} votes (${a.pct}%)${med != null ? ` · ${m.chamber} median ${med}%` : ""}`;
   }
-  const answeredCount = () => Object.values(S.answers).filter((a) => a === "yes" || a === "no").length;
+  const answeredCount = () => [...D.principles.map((p) => p.id), ...D.questions.map((q) => q.id)].filter((id) => yn(S.answers[id])).length;
 
   // ---------- shared bits ----------
   const SEAL = `<svg class="seal" viewBox="0 0 120 120" aria-hidden="true"><circle cx="60" cy="60" r="58" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="60" cy="60" r="52" fill="none" stroke="currentColor" stroke-width=".8"/>${Array.from({ length: 13 }, (_, k) => { const a = -Math.PI / 2 + (k * 2 * Math.PI) / 13; const x = 60 + 45 * Math.cos(a), y = 60 + 45 * Math.sin(a); const pts = Array.from({ length: 10 }, (_, i) => { const r = i % 2 ? 1.45 : 3.6, b = -Math.PI / 2 + (i * Math.PI) / 5; return `${(x + r * Math.cos(b)).toFixed(1)},${(y + r * Math.sin(b)).toFixed(1)}`; }).join(" "); return `<polygon points="${pts}" fill="currentColor"/>`; }).join("")}<path d="M40 86C50 66 66 48 88 32C84 50 70 68 46 84Z" fill="currentColor"/><path d="M40 86L33 95" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M30 90H78" stroke="currentColor"/></svg>`;
@@ -115,11 +145,11 @@
   }
   function voteCard(v, opts = {}) {
     const people = opts.people || delegation().filter((m) => v.pos[m.id]);
-    const L = linkFor(v.id), a = L && S.answers[L.q.id], you = a === "yes" || a === "no";
+    const u = userStance(v), you = !!u;
     return `<article class="vote">
       <div class="slip"><span class="ch">${esc(v.ch)}</span><span>Roll ${esc(v.roll)} · ${fmtDate(v.date)}</span><span class="tally">${esc(v.tally)}</span><span>${num(v.nv)} not voting</span><span class="v ${v.pass ? "Yea" : "Nay"}" style="align-self:flex-start">${esc(v.result)}</span></div>
       <div class="body">
-        <div class="row">${you ? `<span class="pill" style="background:var(--ink);color:var(--parchment)">You said ${a === "yes" ? "Yes" : "No"}</span>` : ""}${v.proc ? `<span class="pill proc">Procedural step</span>` : ""}${(v.tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>
+        <div class="row">${you ? `<span class="pill" style="background:var(--ink);color:var(--parchment)">${esc(u.label)}</span>` : ""}${v.proc ? `<span class="pill proc">Procedural step</span>` : ""}${(v.tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>
         <h3><a href="#/vote/${esc(v.id)}" style="color:inherit;text-decoration:none">${esc(v.title)}</a></h3>
         <p class="muted" style="font-size:14px">${esc(v.q)}</p>
         <p>${esc(v.sum)}</p>
@@ -228,7 +258,7 @@
         <div class="articles">
           <div class="card article"><span class="num">I.</span><h3>Know your delegation</h3><p class="muted">Your two senators and one representative: who they are and how to reach them.</p></div>
           <div class="card article"><span class="num">II.</span><h3>Read the record</h3><p class="muted">Every vote, in plain English where it matters, with each Yea, Nay and missed vote.</p></div>
-          <div class="card article"><span class="num">III.</span><h3>Set your charter</h3><p class="muted">Answer yes-or-no questions tied to real votes and see who votes your way.</p></div>
+          <div class="card article"><span class="num">III.</span><h3>Set your charter</h3><p class="muted">Answer broad yes-or-no questions, confirm new bills as they come up, and see who votes your way.</p></div>
           <div class="card article"><span class="num">IV.</span><h3>Give your instruction</h3><p class="muted">Tell them where you stand, and find where and when to cast your vote.</p></div>
         </div>
       </section>
@@ -386,18 +416,60 @@
       </section>`;
   }
 
+  // ---------- My Charter: broad stance questions + bill questions ----------
+  // Answers stay on this device. WeHold shows where you stand by topic and never labels anyone's politics.
+  function answerSeg(id, a, sensitive) {
+    const opts = [["yes", "Yes"], ["no", "No"], ["skip", "Not sure"]];
+    if (sensitive) opts.push(["pns", "Prefer not to say"]);
+    return `<div class="seg" role="group" aria-label="Your answer">${opts.map(([k, l]) => `<button type="button" data-q="${esc(id)}" data-a="${k}" aria-pressed="${a === k}">${l}</button>`).join("")}</div>`;
+  }
+  // Times the user's bill answers went against their broad answer and they chose to keep both.
+  const exceptionsFor = (pid) => D.questions.filter((q) => S.exceptions[q.id] && (q.tests || []).some((t) => t.p === pid)).length;
   function viewCharter() {
     const done = answeredCount();
+    const total = D.principles.length + D.questions.filter((q) => q.status !== "past").length;
+    const topics = [...new Set(D.principles.map((p) => p.topic))];
+    const standRows = topics.map((t) => {
+      const items = D.principles.filter((p) => p.topic === t && yn(S.answers[p.id]));
+      if (!items.length) return "";
+      return `<li><span><span class="label muted" style="display:block">${esc(t)}</span>${items.map((p) => { const n = exceptionsFor(p.id); return `${esc(S.answers[p.id] === "yes" ? p.yesLabel : p.noLabel)}${n >= 2 ? ` <a href="#/charter" data-jump="${esc(p.id)}" style="font-size:13px">Revisit? Your bill answers differed ${n} times</a>` : ""}`; }).join("; ")}</span></li>`;
+    }).join("");
+    const principleCard = (p) => `<div class="card" id="pq-${esc(p.id)}"><p style="font-weight:700;font-size:17px"><span class="muted" style="font-weight:400;font-size:14px;margin-right:6px">${p.n}.</span>${esc(p.text)}</p>${answerSeg(p.id, S.answers[p.id], p.sensitive)}</div>`;
+    const billCard = (q) => {
+      const a = S.answers[q.id], L = leanFor(q);
+      const tied = q.votes.map((l) => D.votes.find((v) => v.id === l.vote)).filter(Boolean);
+      const when = q.status === "upcoming" ? `Upcoming vote${q.expected ? ": " + esc(q.expected) : ""}` : tied.length ? `Tied to: ${tied.map((v) => `<a href="#/vote/${esc(v.id)}">${esc(v.ch)} vote, ${fmtDate(v.date)}</a>`).join(" · ")}` : "";
+      let lean = "", conflict = "";
+      if (L) {
+        lean = `<p class="pill" style="align-self:flex-start;white-space:normal">Based on your answer to #${L.p.n}, you'd likely say <strong>&nbsp;${YN(L.lean)}</strong>.${yn(a) ? "" : " Tap to confirm or choose differently."}</p>`;
+        if (yn(a) && a !== L.lean && !S.exceptions[q.id]) conflict = `<div class="notice stack" style="gap:8px"><span>This is different from your answer to #${L.p.n}: “${esc(L.p.text)}”</span><div class="row"><button type="button" class="btn small" data-upd="${esc(q.id)}" data-p="${esc(L.p.id)}">Update my answer to #${L.p.n}</button><button type="button" class="btn small ghost" data-exc="${esc(q.id)}">Keep both. This bill is an exception</button></div></div>`;
+      }
+      return `<div class="card"><p style="font-weight:700;font-size:17px">${esc(q.text)}</p>${q.sum ? `<p class="muted" style="font-size:14px">${esc(q.sum)}</p>` : ""}${lean}${answerSeg(q.id, a)}${conflict}${when ? `<span class="muted" style="font-size:13px">${when}</span>` : ""}${q.bill ? `<a href="${esc(q.bill.url)}" target="_blank" rel="noopener" style="font-size:13px">${esc(q.bill.label)} on Congress.gov</a>` : ""}</div>`;
+    };
+    const active = D.questions.filter((q) => q.status !== "past").sort((x, y) => (x.status === "upcoming" ? 0 : 1) - (y.status === "upcoming" ? 0 : 1));
+    const past = D.questions.filter((q) => q.status === "past");
     main.innerHTML = `
       <div class="pagehead"><span class="eyebrow">Where you stand</span><h1>My Charter</h1><p class="quote">Set down where you stand. We hold every vote your officials cast against it.</p>
-      <div class="row"><div class="bar" style="flex:1;min-width:160px"><i style="width:${D.questions.length ? (done / D.questions.length) * 100 : 0}%"></i></div><strong style="font-size:14px">${done} of ${D.questions.length} answered</strong></div></div>
-      ${D.questions.map((q) => { const a = S.answers[q.id]; const tied = q.votes.map((l) => D.votes.find((v) => v.id === l.vote)).filter(Boolean); return `<div class="card"><p style="font-weight:700;font-size:17px">${esc(q.text)}</p>
-        <div class="seg" role="group" aria-label="Your answer">${[["yes", "Yes"], ["no", "No"], ["skip", "Not sure"]].map(([k, l]) => `<button type="button" data-q="${esc(q.id)}" data-a="${k}" aria-pressed="${a === k}">${l}</button>`).join("")}</div>
-        <span class="muted" style="font-size:13px">Tied to: ${tied.map((v) => `<a href="#/vote/${esc(v.id)}">${esc(v.ch)} vote, ${fmtDate(v.date)}</a>`).join(" · ")}</span></div>`; }).join("")}
+      <div class="row"><div class="bar" style="flex:1;min-width:160px"><i style="width:${total ? Math.min(100, (done / total) * 100) : 0}%"></i></div><strong style="font-size:14px">${done} answered</strong></div></div>
+      ${standRows ? `<section class="card"><h2>Where you stand</h2><ul class="list">${standRows}</ul><p class="muted" style="font-size:13px">Built only from your own answers. WeHold never labels anyone's politics.</p></section>` : ""}
+      ${D.principles.length ? `<section class="stack"><h2>Your views</h2><p class="muted" style="font-size:14px">Broad questions about issues that come before Congress. Answer the ones you have a view on. As new bills come up, WeHold suggests an answer from these, and you confirm it.</p>
+        ${topics.map((t) => `<p class="label muted" style="margin-top:8px">${esc(t)}</p>${D.principles.filter((p) => p.topic === t).map(principleCard).join("")}`).join("")}</section>` : ""}
+      ${active.length ? `<section class="stack"><h2>Bills in Congress</h2><p class="muted" style="font-size:14px">Confirm or change the suggested answer for each bill. Only answers you choose are counted.</p>${active.map(billCard).join("")}</section>` : ""}
+      ${past.length ? `<details class="card" id="pastQ"${S.pastOpen ? " open" : ""}><summary style="cursor:pointer;font-weight:700">Past questions (${past.length})</summary><div class="stack" style="margin-top:10px">${past.map(billCard).join("")}</div><p class="muted" style="font-size:13px">These still count toward each official's match.</p></details>` : ""}
       <p class="muted" style="font-size:14px">Your answers stay on this device. They are never sent anywhere.</p>
       <div class="row"><a class="btn" href="#/">See my delegation</a><button class="linkbtn" id="clearAns">Clear my answers</button></div>`;
-    main.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { S.answers[b.dataset.q] = b.dataset.a; save(); const y = scrollY; viewCharter(); scrollTo(0, y); const nb = main.querySelector(`[data-q="${b.dataset.q}"][data-a="${b.dataset.a}"]`); if (nb) nb.focus(); }));
-    document.getElementById("clearAns").onclick = () => { S.answers = {}; save(); viewCharter(); };
+    const rerender = (focusSel) => { const y = scrollY; viewCharter(); scrollTo(0, y); if (focusSel) { const nb = main.querySelector(focusSel); if (nb) nb.focus(); } };
+    main.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { S.answers[b.dataset.q] = b.dataset.a; delete S.exceptions[b.dataset.q]; save(); rerender(`[data-q="${b.dataset.q}"][data-a="${b.dataset.a}"]`); }));
+    main.querySelectorAll("[data-upd]").forEach((b) => (b.onclick = () => {
+      const q = D.questions.find((x) => x.id === b.dataset.upd), t = q && (q.tests || []).find((x) => x.p === b.dataset.p); if (!t) return;
+      // A Yes on the bill means answer t.yes on the broad question; a No means the opposite.
+      const a = S.answers[q.id]; S.answers[t.p] = a === "yes" ? t.yes : t.yes === "yes" ? "no" : "yes";
+      save(); toast(`Updated your answer to #${D.PM[t.p].n}.`); rerender();
+    }));
+    main.querySelectorAll("[data-exc]").forEach((b) => (b.onclick = () => { S.exceptions[b.dataset.exc] = true; save(); rerender(); }));
+    main.querySelectorAll("[data-jump]").forEach((b) => (b.onclick = (e) => { e.preventDefault(); const el = document.getElementById("pq-" + b.dataset.jump); if (el) el.scrollIntoView({ behavior: "smooth", block: "center" }); }));
+    const pq = document.getElementById("pastQ"); if (pq) pq.ontoggle = () => { S.pastOpen = pq.open; save(); };
+    document.getElementById("clearAns").onclick = () => { S.answers = {}; S.exceptions = {}; save(); viewCharter(); };
   }
 
   function viewWrite(id, params) {
@@ -619,6 +691,7 @@
         <section class="card"><h3>Checked before it's published</h3><p>Each day's update adds up every member's vote on every roll call and compares the result with the official totals. Senate votes are also checked against the Senate's own vote list. If anything disagrees, nothing is published until it's fixed.</p></section>
         <section class="card"><h3>Attendance</h3><p>Counts every recorded vote a member was eligible to cast this Congress. “Not voting” counts as missed; “Present” counts as showing up. Members who joined mid-term are counted from their first vote. Absences can have many reasons, and members aren't required to give one.</p></section>
         <section class="card"><h3>Finding your officials</h3><p>Most ZIP codes sit inside one congressional district. When a ZIP crosses district lines, WeHold asks for your street address and checks it with the U.S. Census Bureau's free geocoder. Your address goes only to the Census Bureau and is never stored by WeHold.</p></section>
+        <section class="card"><h3>Your charter, not a label</h3><p>Your stances come only from your own answers, shown topic by topic. WeHold never labels anyone conservative, liberal or anything else. A bill is linked to a question by what it does, never by who sponsored it. Suggested answers on new bills come from your own answers and count only after you confirm them.</p></section>
         <section class="card"><h3>No red team, no blue team</h3><p>Party is shown as a label, never a color. Summaries describe what a bill does; when the parties disagree, each side's main argument gets equal space. A caution appears when one vote bundles unrelated issues, so a Yea or Nay may not reflect a position on the headline.</p></section>
         <section class="card"><h3>Your data stays yours</h3><p>No account, no tracking, no ads. Your ZIP code, stances and letter details are saved only in this browser. Letters are sent by you, through each office's own contact form, phone line or mail.</p></section>
       </div>

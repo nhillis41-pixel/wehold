@@ -1,0 +1,34 @@
+{
+ "note": "Broad stance questions approved Oct 28, 2026. Do not reword, reorder or remove principles; answers are stored on users' devices by id.",
+ "principles": [
+  {"id": "p-spending", "n": 1, "topic": "Spending & taxes", "text": "Should the federal government cut spending to reduce the deficit, even if some programs are reduced?", "yesLabel": "Cut spending to reduce the deficit", "noLabel": "Protect programs over cutting spending"},
+  {"id": "p-taxes", "n": 2, "topic": "Spending & taxes", "text": "Should income tax rates stay at current levels for all income groups, including the highest earners?", "yesLabel": "Keep current tax rates for all incomes", "noLabel": "Raise taxes on the highest earners"},
+  {"id": "p-enforcement", "n": 3, "topic": "Immigration", "text": "Should Congress increase funding for immigration enforcement and border security?", "yesLabel": "More funding for border enforcement", "noLabel": "No increase in enforcement funding"},
+  {"id": "p-dreamers", "n": 4, "topic": "Immigration", "text": "Should undocumented immigrants who were brought to the U.S. as children be able to earn legal status?", "yesLabel": "Legal status for people brought here as children", "noLabel": "No legal status for people brought here as children"},
+  {"id": "p-premiums", "n": 5, "topic": "Health care", "text": "Should the federal government help pay insurance premiums for people who buy their own health coverage?", "yesLabel": "Federal help with insurance premiums", "noLabel": "No federal help with premiums"},
+  {"id": "p-medicaidwork", "n": 6, "topic": "Health care", "text": "Should adults who get Medicaid be required to work, study or volunteer if they are able to?", "yesLabel": "Medicaid work requirements", "noLabel": "No Medicaid work requirements"},
+  {"id": "p-permitting", "n": 7, "topic": "Energy & environment", "text": "Should it be faster to get federal approval for energy projects such as pipelines, power plants and power lines?", "yesLabel": "Faster approval for energy projects", "noLabel": "Keep the current approval process"},
+  {"id": "p-emissions", "n": 8, "topic": "Energy & environment", "text": "Should the federal government limit greenhouse gas emissions from power plants and vehicles?", "yesLabel": "Federal emission limits", "noLabel": "No federal emission limits"},
+  {"id": "p-bgchecks", "n": 9, "topic": "Guns", "text": "Should all gun sales, including private sales between individuals, require a background check?", "yesLabel": "Background checks on all gun sales", "noLabel": "No background check required for private sales"},
+  {"id": "p-carry", "n": 10, "topic": "Guns", "text": "Should a concealed-carry permit from one state be valid in every state?", "yesLabel": "Carry permits valid in every state", "noLabel": "Each state sets its own carry rules"},
+  {"id": "p-warpowers", "n": 11, "topic": "Foreign policy & military", "text": "Should the President need approval from Congress before keeping U.S. forces in combat?", "yesLabel": "Congress approves continued combat", "noLabel": "The President decides on continued combat"},
+  {"id": "p-ukraine", "n": 12, "topic": "Foreign policy & military", "text": "Should the U.S. keep sending military aid to Ukraine?", "yesLabel": "Continue military aid to Ukraine", "noLabel": "Stop military aid to Ukraine"},
+  {"id": "p-voterid", "n": 13, "topic": "Elections", "text": "Should voters have to show a photo ID to vote in federal elections?", "yesLabel": "Photo ID to vote", "noLabel": "No photo ID requirement"},
+  {"id": "p-mailvote", "n": 14, "topic": "Elections", "text": "Should every eligible voter be able to vote by mail without giving a reason?", "yesLabel": "Mail voting for any eligible voter", "noLabel": "Mail voting only with a reason"},
+  {"id": "p-stocks", "n": 15, "topic": "Ethics in Congress", "text": "Should members of Congress and their immediate families be barred from trading individual stocks?", "yesLabel": "Ban stock trading by members of Congress", "noLabel": "Allow stock trading by members of Congress"},
+  {"id": "p-termlimits", "n": 16, "topic": "Ethics in Congress", "text": "Should there be term limits for members of Congress?", "yesLabel": "Term limits for Congress", "noLabel": "No term limits for Congress"},
+  {"id": "p-minwage", "n": 17, "topic": "Work & trade", "text": "Should the federal minimum wage be raised above $7.25 an hour?", "yesLabel": "Raise the federal minimum wage", "noLabel": "Keep the federal minimum wage at $7.25"},
+  {"id": "p-tariffs", "n": 18, "topic": "Work & trade", "text": "Should the U.S. put tariffs on imports to protect American industries, even if some prices go up?", "yesLabel": "Tariffs to protect American industries", "noLabel": "Avoid tariffs on imports"},
+  {"id": "p-agecheck", "n": 19, "topic": "Technology & privacy", "text": "Should social media companies have to verify users' ages and limit accounts for children?", "yesLabel": "Age checks on social media", "noLabel": "No social media age-check rules"},
+  {"id": "p-warrant", "n": 20, "topic": "Technology & privacy", "text": "Should federal agencies need a warrant to search Americans' messages collected by foreign intelligence programs?", "yesLabel": "Warrant to search Americans' messages", "noLabel": "No warrant requirement for those searches"},
+  {"id": "p-loans", "n": 21, "topic": "Education & family", "text": "Should the federal government cancel some student loan debt?", "yesLabel": "Cancel some student loan debt", "noLabel": "No student loan cancellation"},
+  {"id": "p-abortion", "n": 22, "topic": "Education & family", "text": "Should abortion laws be decided by each state rather than set nationwide?", "yesLabel": "Each state decides abortion laws", "noLabel": "A nationwide abortion standard", "sensitive": true}
+ ],
+ "questions": {
+  "q-stocks": {"status": "past", "tests": [{"p": "p-stocks", "yes": "yes"}]},
+  "q-iran": {"status": "past", "tests": [{"p": "p-warpowers", "yes": "yes"}]},
+  "q-voterid": {"status": "past", "tests": [{"p": "p-voterid", "yes": "yes"}]},
+  "q-border": {"status": "past", "tests": [{"p": "p-enforcement", "yes": "yes"}]}
+ },
+ "upcoming": []
+}
