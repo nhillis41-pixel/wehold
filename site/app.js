@@ -714,10 +714,11 @@
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
     else if (parts[0] === "where") viewWhere();
+    else if (parts[0] === "plus" && window.WeHoldPlus) window.WeHoldPlus.view(main, params, toast);
     else if (parts[0] === "results") viewResults();
     else viewHome();
     window.scrollTo(0, 0);
   }
   window.addEventListener("hashchange", render);
-  loadData().then(render).catch(() => { main.innerHTML = `<p>WeHold couldn't load its data. Refresh the page to try again.</p>`; });
+  loadData().then(() => (window.WeHoldPlus ? window.WeHoldPlus.init() : null)).then(render).catch(() => { main.innerHTML = `<p>WeHold couldn't load its data. Refresh the page to try again.</p>`; });
 })();
