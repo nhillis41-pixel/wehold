@@ -695,6 +695,7 @@
         <section class="card"><h3>No red team, no blue team</h3><p>Party is shown as a label, never a color. Summaries describe what a bill does; when the parties disagree, each side's main argument gets equal space. A caution appears when one vote bundles unrelated issues, so a Yea or Nay may not reflect a position on the headline.</p></section>
         <section class="card"><h3>Your data stays yours</h3><p>No account, no tracking, no ads. Your ZIP code, stances and letter details are saved only in this browser. Letters are sent by you, through each office's own contact form, phone line or mail.</p></section>
       </div>
+      <p class="muted">WeHold is published by WeHold LLC, a Tennessee company based in Morrison, Tennessee. Contact: <a href="mailto:nathan@weholdllc.com">nathan@weholdllc.com</a>. Read the <a href="privacy.html">Privacy Policy</a> and <a href="terms.html">Terms of Use</a>.</p>
       <p class="muted">WeHold is an independent, nonpartisan project. It is not affiliated with, endorsed by, or speaking for any government agency or political party. The code is open at <a href="https://github.com/nhillis41-pixel/wehold" target="_blank" rel="noopener">github.com/nhillis41-pixel/wehold</a>.</p>`;
   }
 
