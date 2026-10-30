@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>WeHold — The Power</title>
+<meta name="description" content="See how your members of Congress vote, how often they show up, and tell them where you stand. Independent and nonpartisan; every vote from official House and Senate records.">
+<meta name="theme-color" content="#F2EBD9" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#16130E" media="(prefers-color-scheme: dark)">
+<meta property="og:title" content="WeHold — They hold office. We hold the power.">
+<meta property="og:description" content="Every vote your members of Congress cast, how often they show up, and where you can vote.">
+<meta property="og:image" content="img/capitol.jpg">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="fonts/caslon-display.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="fonts/public-sans.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="topbar">
+  <div class="in">
+    <a class="brand" href="#/" aria-label="WeHold home">
+      <span class="wordmark"><b>W</b>e<b>H</b>old</span>
+      <span class="tagline">the power</span>
+    </a>
+    <nav class="nav" aria-label="Main">
+      <a href="#/" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18"/><path d="M5 21V10M9.5 21V10M14.5 21V10M19 21V10"/><path d="M2.5 10 12 4l9.5 6z"/></svg><span>My officials</span></a>
+      <a href="#/votes" data-nav="votes"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z"/><path d="M9 11h7M9 15h7"/></svg><span>Docket</span></a>
+      <a href="#/charter" data-nav="charter"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4h11a2 2 0 0 1 0 4H7"/><path d="M7 4a2 2 0 0 0 0 4v10a2 2 0 0 0 2 2h9"/><path d="M10 12h5"/></svg><span>My Charter</span></a>
+      <a href="#/where" data-nav="where"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="1"/><path d="M8 10V4h8v6M10 7h4"/></svg><span>Vote</span></a>
+      <a href="#/about" data-nav="about"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg><span>About</span></a>
+    </nav>
+  </div>
+</header>
+<main id="main" tabindex="-1"><p class="muted">Loading…</p></main>
+<footer>
+  <div class="in">
+    <div class="stack" style="gap:6px">
+      <span class="wordmark"><b>W</b>e<b>H</b>old</span>
+      <span>Independent and nonpartisan. Not affiliated with any government agency or political party.</span>
+    </div>
+    <div class="stack" style="gap:6px">
+      <strong style="color:var(--ink)">Sources</strong>
+      <span>Votes: <a href="https://clerk.house.gov/Votes" target="_blank" rel="noopener">House Clerk</a> · <a href="https://www.senate.gov/legislative/votes_new.htm" target="_blank" rel="noopener">U.S. Senate</a><br>Polling places: Voting Information Project<br><span id="updated"></span></span>
+    </div>
+    <div class="stack" style="gap:6px">
+      <strong style="color:var(--ink)">Your privacy</strong>
+      <span>No account, no tracking, no ads. Your answers stay on this device. <a href="#/about">How WeHold works</a></span>
+    </div>
+    <div class="stack" style="gap:6px">
+      <strong style="color:var(--ink)">WeHold LLC</strong>
+      <span>&copy; 2026 WeHold LLC &middot; Morrison, Tennessee<br><a href="mailto:nathan@weholdllc.com">nathan@weholdllc.com</a><br><a href="privacy.html">Privacy Policy</a> &middot; <a href="terms.html">Terms of Use</a></span>
+    </div>
+  </div>
+</footer>
+<script src="plus.js?v=1"></script>
+<script src="app.js?v=3"></script>
+</body>
+</html>

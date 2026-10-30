@@ -62,3 +62,12 @@ file for the new district maps. Several states use new maps starting with the 12
 ## License
 
 Code: MIT. Vote and member data come from U.S. government records and the CC0 congress-legislators project.
+
+## WeHold Plus testers
+
+Plus features are built behind switches in `site/plus.js` and shown only to invited testers until launch.
+
+- **Invite a tester:** send them `https://app.weholdllc.com/#/plus?code=<their code>`, or have them enter the code at `app.weholdllc.com/#/plus`.
+- **Add a code:** remove the dashes, make it uppercase, and put its SHA-256 hash in `TESTERS` (Mac/Linux: `printf 'WHABCD1234' | shasum -a 256`). Never commit the code itself.
+- **Remove a tester:** delete their line from `TESTERS`; Plus turns off on their device the next time the app loads.
+- **Turn a feature on for everyone:** set `public: true` on it in `FEATURES`.
