@@ -8,12 +8,10 @@
  },
  "rolls": {
   "House": 676,
-  "Senate": 0
+  "Senate": 915
  },
- "unavailable": {
-  "Senate": "Could not reach the official source on the last update."
- },
- "updated": "2026-11-09T12:07Z",
+ "unavailable": {},
+ "updated": "2026-11-09T13:34Z",
  "warnings": 0,
  "zips": {
   "split": 5346,
