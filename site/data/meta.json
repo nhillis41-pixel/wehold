@@ -3,15 +3,15 @@
  "congress": 119,
  "electionDay": "2026-11-03",
  "latest": {
-  "House": "2026-11-09",
+  "House": "2026-11-10",
   "Senate": "2026-11-09"
  },
  "rolls": {
-  "House": 678,
+  "House": 681,
   "Senate": 916
  },
  "unavailable": {},
- "updated": "2026-11-10T22:53Z",
+ "updated": "2026-11-10T23:46Z",
  "warnings": 0,
  "zips": {
   "split": 5346,
