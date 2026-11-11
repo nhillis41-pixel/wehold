@@ -21,6 +21,9 @@
     billDetail:  { name: "Bill breakdown",    blurb: "Section by section in plain English: what changes, what it costs, who it affects, both sides' arguments and every vote along the way.", beta: true,  public: false },
   };
 
+  // Features that are built and can be opened from the Plus page.
+  const LINKS = { reportCard: "#/report" };
+
   // ---------- testers: label -> SHA-256 of the invite code (uppercase, no spaces) ----------
   // Never put the codes themselves here; this file is public.
   const TESTERS = {
@@ -110,7 +113,8 @@
       const rows = Object.keys(FEATURES).map((k) => {
         const f = FEATURES[k];
         const status = f.public ? "Live for everyone" : f.beta ? "In testing" : "Not started";
-        return `<section class="card"><span class="pill${f.beta && !f.public ? " new" : ""}">${esc(status)}</span><h3>${esc(f.name)}</h3><p>${esc(f.blurb)}</p></section>`;
+        const link = LINKS[k] ? `<p><a class="btn small" href="${LINKS[k]}">Open ${esc(f.name.toLowerCase())}</a></p>` : "";
+        return `<section class="card"><span class="pill${f.beta && !f.public ? " new" : ""}">${esc(status)}</span><h3>${esc(f.name)}</h3><p>${esc(f.blurb)}</p>${link}</section>`;
       }).join("");
       main.innerHTML = `
         <header class="pagehead"><span class="eyebrow">WeHold Plus · Testing</span><h1>Thanks for testing.</h1>

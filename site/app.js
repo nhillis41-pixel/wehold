@@ -308,6 +308,7 @@
         <div class="count">${days}<small>${days === 1 ? "day" : "days"}</small></div>
         <div class="stack" style="gap:2px"><span class="k">Your next verdict</span><strong style="font-size:18px">Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ""}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are on the ballot.` : "None of your officials' seats are up this time."}</span></div>
       </div>` : ""}
+      ${plusOn("reportCard") && delegation().length ? `<a class="card linkcard" href="#/report"><span class="stack" style="gap:2px"><strong style="font-size:17px">Your report card <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">How your officials line up with your answers, topic by topic</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       ${days != null ? `<a class="card linkcard" href="#/where"><span class="thumb plate"><img src="img/ballot.jpg" alt="" width="1000" height="753"></span><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting, from election officials.</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       ${resultsOn ? `<a class="card linkcard" href="#/results"><span class="stack" style="gap:2px"><strong style="font-size:17px">Election results</strong><span class="muted" style="font-size:14px">Official, from your state's election office</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       ${NO_SENATORS.has(S.state) ? `<p class="notice">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
@@ -352,6 +353,7 @@
           ${m.url ? `<a class="btn ghost" href="${esc(m.url)}" target="_blank" rel="noopener">Official website</a>` : ""}
         </div>
       </section>
+      ${plusOn("reportCard") ? `<a class="card linkcard" href="#/report/${esc(m.id)}"><span class="stack" style="gap:2px"><strong style="font-size:17px">Report card <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">How ${esc(m.last)} lines up with you, topic by topic and over time</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       <section class="stack">
         <h2>Key votes</h2>
         ${key.length ? key.map((v) => voteCard(v, { people: [m] })).join("") : `<p class="muted">No highlighted votes for this official yet.</p>`}
@@ -699,13 +701,161 @@
       <p class="muted">WeHold is an independent, nonpartisan project. It is not affiliated with, endorsed by, or speaking for any government agency or political party. The code is open at <a href="https://github.com/nhillis41-pixel/wehold" target="_blank" rel="noopener">github.com/nhillis41-pixel/wehold</a>.</p>`;
   }
 
+  // ---------- WeHold Plus: report card ----------
+  // Built only from the user's own answers and official votes, on this device. Never a grade or a label.
+  const plusOn = (f) => !!(window.WeHoldPlus && window.WeHoldPlus.isOn(f));
+  function topicOf(v) {
+    const L = linkFor(v.id);
+    const t = (L && (L.q.tests || [])[0]) || (v.tests || [])[0];
+    if (t && D.PM[t.p]) return D.PM[t.p].topic;
+    return (v.tags && v.tags[0]) || "Other";
+  }
+  function reportFor(m) {
+    const rows = D.votes.map((v) => ({ v, c: compare(m, v) })).filter((x) => x.c).sort((a, b) => (b.v.date || "").localeCompare(a.v.date || ""));
+    const topics = {}, months = {};
+    for (const x of rows) {
+      const t = topicOf(x.v); const mo = (x.v.date || "").slice(0, 7);
+      for (const [bag, key] of [[topics, t], [months, mo]]) {
+        const o = (bag[key] = bag[key] || { agree: 0, diff: 0, miss: 0 });
+        o[x.c.kind] += 1;
+      }
+    }
+    const agree = rows.filter((x) => x.c.kind === "agree").length, diff = rows.filter((x) => x.c.kind === "diff").length, miss = rows.filter((x) => x.c.kind === "miss").length;
+    return { m, rows, topics, months, agree, diff, miss, n: agree + diff };
+  }
+  const pct = (a, n) => (n ? Math.round((100 * a) / n) : null);
+  const MIN_N = 3;
+  function topicBar(o) {
+    const n = o.agree + o.diff;
+    return `<div class="bar" role="img" aria-label="${o.agree} of ${n} matched"><i style="width:${n ? (100 * o.agree) / n : 0}%"></i><b style="width:${n ? (100 * o.diff) / n : 0}%"></b></div>`;
+  }
+  const fmtMonth = (ym) => (ym ? new Date(ym + "-15T12:00:00").toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "Undated");
+  function reportCardHtml(r) {
+    const m = r.m, p = pct(r.agree, r.n);
+    const tlist = Object.entries(r.topics).sort((a, b) => (b[1].agree + b[1].diff) - (a[1].agree + a[1].diff));
+    const mlist = Object.entries(r.months).sort((a, b) => b[0].localeCompare(a[0]));
+    return `<section class="card stack" id="rc-${esc(m.id)}">
+      <div><span class="label muted">Report card</span><h2 style="margin:2px 0">${honor(m)} ${esc(m.name)}</h2><span class="muted">${esc(seatLine(m))} · ${esc(PARTY[m.party] || m.party)}</span></div>
+      ${r.n ? `<div class="stats">
+        <div class="stat"><span class="big">${r.agree} / ${r.n}</span><span class="muted">votes matched your answers${r.n >= MIN_N ? ` (${p}%)` : ""}</span></div>
+        <div class="stat"><span class="big">${r.diff}</span><span class="muted">voted differently</span></div>
+        <div class="stat"><span class="big">${r.miss}</span><span class="muted">compared votes missed</span></div>
+      </div>
+      ${r.n < MIN_N ? `<p class="muted" style="font-size:14px">Based on only ${r.n} vote${r.n === 1 ? "" : "s"} so far. Answer more questions in <a href="#/charter">My Charter</a> for a fuller picture.</p>` : ""}
+      <div><p class="label">By topic</p><ul class="list">${tlist.map(([t, o]) => `<li style="display:block"><span style="display:flex;justify-content:space-between;gap:8px"><strong>${esc(t)}</strong><span class="muted">${o.agree} of ${o.agree + o.diff} matched${o.miss ? ` · ${o.miss} missed` : ""}</span></span>${o.agree + o.diff ? topicBar(o) : ""}</li>`).join("")}</ul></div>
+      <div><p class="label">Over time</p><ul class="list">${mlist.map(([mo, o]) => `<li><span>${esc(fmtMonth(mo))}</span><span class="muted">${o.agree} of ${o.agree + o.diff} matched${o.miss ? ` · ${o.miss} missed` : ""}</span></li>`).join("")}</ul></div>
+      <details><summary>Every compared vote (${r.rows.length})</summary><ul class="list">${r.rows.map((x) => `<li><span><a href="#/vote/${esc(x.v.id)}">${esc(x.v.title)}</a><br><span class="muted" style="font-size:13px">${fmtDate(x.v.date)} · ${esc(x.c.label)} · voted ${esc(LABEL[x.c.p] || x.c.p)}</span></span>${x.c.kind === "agree" ? `<span class="match ok">✓ matches you</span>` : x.c.kind === "diff" ? `<span class="match no">✕ differs</span>` : `<span class="muted">Missed</span>`}</li>`).join("")}</ul></details>
+      <div class="row noprint"><button class="btn small" type="button" data-img="${esc(m.id)}">Save as image</button><button class="btn small ghost" type="button" data-print>Print or save PDF</button></div>`
+      : `<p class="muted">None of the questions you've answered have come to a vote by ${esc(m.last)} yet. <a href="#/charter">Answer more in My Charter</a>.</p>`}
+    </section>`;
+  }
+  // Draw a shareable image on the device. Nothing is uploaded.
+  function reportImage(r) {
+    const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const g = c.getContext("2d"), m = r.m;
+    const col = { bg: "#F2EBD9", ink: "#231B12", muted: "#5E5245", navy: "#1C2E4A", ochre: "#A8741F", hatch: "#DCCFB1", rule: "#D3C29E" };
+    g.fillStyle = col.bg; g.fillRect(0, 0, W, H);
+    g.fillStyle = col.navy; g.fillRect(0, 0, W, 14);
+    const txt = (s, x, y, font, color, align = "left") => { g.font = font; g.fillStyle = color; g.textAlign = align; g.fillText(s, x, y); };
+    const fit = (s, max, font) => { g.font = font; let t = s; while (g.measureText(t).width > max && t.length > 4) t = t.slice(0, -2); return t === s ? s : t + "…"; };
+    txt("WEHOLD · REPORT CARD", 80, 110, "600 28px system-ui, sans-serif", col.muted);
+    const nm = `${honor(m)} ${m.name}`, f1 = "700 64px Georgia, serif";
+    txt(fit(nm, W - 160, f1), 80, 200, f1, col.ink);
+    txt(fit(`${seatLine(m)} · ${PARTY[m.party] || m.party}`, W - 160, "32px system-ui, sans-serif"), 80, 255, "32px system-ui, sans-serif", col.muted);
+    g.fillStyle = col.rule; g.fillRect(80, 300, W - 160, 2);
+    txt(`${r.agree} of ${r.n}`, 80, 420, "700 110px Georgia, serif", col.navy);
+    txt("votes matched my answers", 80, 475, "34px system-ui, sans-serif", col.ink);
+    txt(`${r.diff} differed · ${r.miss} missed`, 80, 525, "30px system-ui, sans-serif", col.muted);
+    let y = 620;
+    txt("BY TOPIC", 80, y, "600 26px system-ui, sans-serif", col.muted); y += 30;
+    const tl = Object.entries(r.topics).filter(([, o]) => o.agree + o.diff).sort((a, b) => (b[1].agree + b[1].diff) - (a[1].agree + a[1].diff));
+    const ROW = 104, room = Math.floor((H - 170 - y) / ROW), shown = tl.length > room ? tl.slice(0, room - 1) : tl;
+    for (const [t, o] of shown) {
+      const n = o.agree + o.diff; y += 50;
+      txt(fit(t, 600, "600 32px system-ui, sans-serif"), 80, y, "600 32px system-ui, sans-serif", col.ink);
+      txt(`${o.agree} of ${n}`, W - 80, y, "32px system-ui, sans-serif", col.muted, "right");
+      y += 20; g.fillStyle = col.hatch; g.fillRect(80, y, W - 160, 14);
+      g.fillStyle = col.navy; g.fillRect(80, y, ((W - 160) * o.agree) / n, 14);
+      g.fillStyle = col.ochre; g.fillRect(80 + ((W - 160) * o.agree) / n, y, ((W - 160) * o.diff) / n, 14);
+      y += 34;
+    }
+    if (shown.length < tl.length) { y += 50; txt(`+ ${tl.length - shown.length} more topic${tl.length - shown.length === 1 ? "" : "s"} in the app`, 80, y, "30px system-ui, sans-serif", col.muted); }
+    txt("Compared with my own answers to WeHold's questions.", 80, H - 120, "26px system-ui, sans-serif", col.muted);
+    txt(`Official roll-call votes, checked ${new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}.`, 80, H - 82, "26px system-ui, sans-serif", col.muted);
+    txt("They hold office. We hold the power. · app.weholdllc.com", 80, H - 44, "600 26px system-ui, sans-serif", col.navy);
+    return c;
+  }
+  async function shareImage(r) {
+    const c = reportImage(r);
+    const blob = await new Promise((res) => c.toBlob(res, "image/png"));
+    const name = `wehold-report-${(r.m.last || "official").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+    const file = blob && typeof File === "function" ? new File([blob], name, { type: "image/png" }) : null;
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try { await navigator.share({ files: [file], title: "My WeHold report card" }); return; } catch (e) { if (e && e.name === "AbortError") return; }
+    }
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    toast("Image saved.");
+  }
+  function plusLocked() {
+    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>Report card</h1><p class="lede">See how each of your officials lines up with your own answers, topic by topic and over time, and compare any two officials. It's part of WeHold Plus, which is being tested now.</p></header><p><a class="btn" href="#/plus">About WeHold Plus</a></p>`;
+  }
+  function bindReport(reports) {
+    main.querySelectorAll("[data-img]").forEach((b) => (b.onclick = () => { const r = reports.find((x) => x.m.id === b.dataset.img); if (r) shareImage(r).catch(() => toast("Couldn't make the image on this device.")); }));
+    main.querySelectorAll("[data-print]").forEach((b) => (b.onclick = () => window.print()));
+  }
+  function memberOptions(sel) {
+    const cur = D.members.filter((m) => m.current).sort((a, b) => (a.state + a.chamber + a.last).localeCompare(b.state + b.chamber + b.last));
+    return `<option value="">Choose an official</option>` + cur.map((m) => `<option value="${esc(m.id)}"${m.id === sel ? " selected" : ""}>${esc(m.last)}, ${esc(m.name)} · ${esc(m.state)} ${esc(m.chamber)}${m.chamber === "House" ? " " + (m.district || "AL") : ""} (${esc(m.party)})</option>`).join("");
+  }
+  function viewReport(id) {
+    if (!plusOn("reportCard")) return plusLocked();
+    const people = id ? [D.byId[id]].filter(Boolean) : delegation();
+    const reports = people.map(reportFor);
+    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus · Report card</span><h1>${id && people[0] ? `${honor(people[0])} ${esc(people[0].last)}` : "Your officials"}</h1>
+      <p class="lede">How each official's votes line up with your own answers, topic by topic and over time. Only votes on questions you've answered count. Nothing here leaves your device.</p></header>
+      ${!answeredCount() ? `<p class="card">Answer a few questions in <a href="#/charter">My Charter</a> first. The report card compares officials' votes with your answers.</p>` : ""}
+      ${!people.length ? `<p class="card"><a href="#/">Add your ZIP code</a> to see your own officials, or compare any two officials below.</p>` : reports.map(reportCardHtml).join("")}
+      <section class="card stack noprint"><h2>Compare two officials</h2><p class="muted">Pick any two members of Congress to see how each lines up with your answers, side by side.</p>
+        <label class="f" for="cmpA">First official</label><select id="cmpA">${memberOptions(people[0] && people[0].id)}</select>
+        <label class="f" for="cmpB">Second official</label><select id="cmpB">${memberOptions(people[1] && people[1].id)}</select>
+        <button class="btn" type="button" id="cmpGo">Compare</button></section>`;
+    bindReport(reports);
+    document.getElementById("cmpGo").onclick = () => {
+      const a = document.getElementById("cmpA").value, b = document.getElementById("cmpB").value;
+      if (!a || !b || a === b) return toast("Choose two different officials.");
+      location.hash = `#/compare?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
+    };
+  }
+  function viewCompare(params) {
+    if (!plusOn("reportCard")) return plusLocked();
+    const A = D.byId[params.get("a")], B = D.byId[params.get("b")];
+    if (!A || !B) { location.hash = "#/report"; return; }
+    const ra = reportFor(A), rb = reportFor(B);
+    const topics = [...new Set([...Object.keys(ra.topics), ...Object.keys(rb.topics)])].sort();
+    const cell = (o) => (o && o.agree + o.diff ? `${o.agree} of ${o.agree + o.diff}${topicBar(o)}` : `<span class="muted">—</span>`);
+    const shared = D.votes.filter((v) => v.pos[A.id] && v.pos[B.id]);
+    const same = shared.filter((v) => ["Yea", "Nay"].includes(v.pos[A.id]) && v.pos[A.id] === v.pos[B.id]).length;
+    const both = shared.filter((v) => ["Yea", "Nay"].includes(v.pos[A.id]) && ["Yea", "Nay"].includes(v.pos[B.id])).length;
+    main.innerHTML = `<a href="#/report">‹ Report card</a>
+      <header class="pagehead"><span class="eyebrow">WeHold Plus · Compare</span><h1>${esc(A.last)} and ${esc(B.last)}</h1><p class="lede">Each official's votes compared with your own answers. Officials in different chambers vote on different roll calls, so their counts can differ.</p></header>
+      <div class="stats">
+        <div class="stat"><span class="big">${ra.agree} / ${ra.n}</span><span class="muted">${esc(A.last)} matched you</span></div>
+        <div class="stat"><span class="big">${rb.agree} / ${rb.n}</span><span class="muted">${esc(B.last)} matched you</span></div>
+        ${both ? `<div class="stat"><span class="big">${same} / ${both}</span><span class="muted">key votes where they voted the same way</span></div>` : ""}
+      </div>
+      <section class="card"><h2>By topic</h2>${topics.length ? `<ul class="list">${topics.map((t) => `<li style="display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px;align-items:start"><strong>${esc(t)}</strong><span><span class="muted" style="font-size:13px;display:block">${esc(A.last)}</span>${cell(ra.topics[t])}</span><span><span class="muted" style="font-size:13px;display:block">${esc(B.last)}</span>${cell(rb.topics[t])}</span></li>`).join("")}</ul>` : `<p class="muted">Neither official has voted yet on a question you've answered. <a href="#/charter">Answer more in My Charter</a>.</p>`}</section>
+      ${reportCardHtml(ra)}${reportCardHtml(rb)}`;
+    bindReport([ra, rb]);
+  }
+
   // ---------- router ----------
   function render() {
     const raw = location.hash.replace(/^#/, "") || "/";
     const [path, qs] = raw.split("?");
     const params = new URLSearchParams(qs || "");
     const parts = path.split("/").filter(Boolean);
-    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about" }[parts[0] || ""];
+    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home" }[parts[0] || ""];
     document.querySelectorAll("[data-nav]").forEach((a) => (a.dataset.nav === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (parts[0] === "member") viewMember(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "votes") viewVotes();
@@ -714,6 +864,8 @@
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
     else if (parts[0] === "where") viewWhere();
+    else if (parts[0] === "report") viewReport(decodeURIComponent(parts[1] || ""));
+    else if (parts[0] === "compare") viewCompare(params);
     else if (parts[0] === "plus" && window.WeHoldPlus) window.WeHoldPlus.view(main, params, toast);
     else if (parts[0] === "results") viewResults();
     else viewHome();
