@@ -51,3 +51,13 @@ jobs:
             val="${!name}"
             if [ -n "$val" ]; then printf '%s' "$val" | $W secret put "$name"; else echo "$name not saved yet."; fi
           done
+      - name: Check the service answers
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then exit 0; fi
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if out=$(curl -fsS https://push.weholdllc.com/health); then echo "push.weholdllc.com says: $out"; exit 0; fi
+            echo "Not answering yet (new address can take a minute)..."; sleep 20
+          done
+          echo "push.weholdllc.com did not answer"; exit 1

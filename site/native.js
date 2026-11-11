@@ -8,7 +8,7 @@
 (() => {
   "use strict";
   const NATIVE_CONFIG = {
-    push: "", // e.g. "https://push.weholdllc.com" once the alert service is deployed
+    push: "https://push.weholdllc.com", // WeHold alert service (worker/), live since Nov 11, 2026
     revenuecat: { ios: "", android: "" }, // public SDK keys from RevenueCat > Project > API keys
     entitlement: "plus", // RevenueCat entitlement that unlocks WeHold Plus
   };
