@@ -52,7 +52,7 @@ jobs:
         run: |
           set -e
           mv_if() { if [ -f "$1" ]; then mkdir -p "$(dirname "$2")"; git mv -f "$1" "$2"; fi; }
-          for f in common.py members.py money.py votes.py attendance.py zips.py validate.py build.py botauth.py requirements.txt; do mv_if "$f" "pipeline/$f"; done
+          for f in common.py members.py money.py bills.py votes.py attendance.py zips.py validate.py build.py botauth.py requirements.txt; do mv_if "$f" "pipeline/$f"; done
           mv_if test_pipeline.py pipeline/tests/test_pipeline.py
           mv_if house_roll.xml pipeline/tests/fixtures/house_roll.xml
           mv_if senate_roll.xml pipeline/tests/fixtures/senate_roll.xml
@@ -82,6 +82,9 @@ jobs:
         env:
           WEHOLD_BOT_KEY: ${{ secrets.WEHOLD_BOT_KEY }}
         run: python pipeline/build.py
+
+      - name: Refresh roll calls on highlighted bills
+        run: python pipeline/bills.py --offline || echo "Bill roll-call refresh skipped."
 
       - name: Save updated data
         if: always()
