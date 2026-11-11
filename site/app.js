@@ -35,7 +35,7 @@
     return r.json();
   }
   async function loadData() {
-    const [m, v, a, meta, stn] = await Promise.allSettled([getJSON("data/members.json"), getJSON("data/votes.json"), getJSON("data/attendance.json"), getJSON("data/meta.json"), getJSON("stances.json")]);
+    const [m, v, a, meta, stn, tp] = await Promise.allSettled([getJSON("data/members.json"), getJSON("data/votes.json"), getJSON("data/attendance.json"), getJSON("data/meta.json"), getJSON("stances.json"), getJSON("topics.json")]);
     if (m.status === "fulfilled") { D.members = m.value; D.members.forEach((x) => (D.byId[x.id] = x)); }
     if (v.status === "fulfilled") { D.votes = v.value.votes || []; D.questions = v.value.questions || []; }
     if (a.status === "fulfilled") D.att = a.value;
@@ -47,6 +47,8 @@
     const qx = sx.questions || {};
     D.questions.forEach((q) => { const x = qx[q.id] || {}; q.status = q.status || x.status || "current"; q.tests = q.tests || x.tests || []; q.votes = q.votes || []; });
     (sx.upcoming || []).forEach((q) => { if (!D.questions.some((y) => y.id === q.id)) D.questions.push(Object.assign({ status: "upcoming", tests: [], votes: [] }, q)); });
+    D.topics = tp.status === "fulfilled" ? tp.value.topics || [] : [];
+    indexTopics();
     const up = document.getElementById("updated");
     if (up && D.meta.updated) up.textContent = "Votes checked " + new Date(D.meta.updated).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
   }
@@ -308,6 +310,7 @@
         <div class="count">${days}<small>${days === 1 ? "day" : "days"}</small></div>
         <div class="stack" style="gap:2px"><span class="k">Your next verdict</span><strong style="font-size:18px">Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ""}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are on the ballot.` : "None of your officials' seats are up this time."}</span></div>
       </div>` : ""}
+      ${plusOn("alerts") ? (() => { const n = newAlertCount(); return `<a class="card linkcard" href="#/alerts"><span class="stack" style="gap:2px"><strong style="font-size:17px">Alerts <span class="pill new">Plus</span>${n ? ` <span class="pill">${n} new</span>` : ""}</strong><span class="muted" style="font-size:14px">${followed().length ? `Topics you follow, your officials' votes and a weekly briefing` : `Choose topics to follow and get a weekly briefing`}</span></span><span class="go" aria-hidden="true">→</span></a>`; })() : ""}
       ${plusOn("reportCard") && delegation().length ? `<a class="card linkcard" href="#/report"><span class="stack" style="gap:2px"><strong style="font-size:17px">Your report card <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">How your officials line up with your answers, topic by topic</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       ${days != null ? `<a class="card linkcard" href="#/where"><span class="thumb plate"><img src="img/ballot.jpg" alt="" width="1000" height="753"></span><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting, from election officials.</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       ${resultsOn ? `<a class="card linkcard" href="#/results"><span class="stack" style="gap:2px"><strong style="font-size:17px">Election results</strong><span class="muted" style="font-size:14px">Official, from your state's election office</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
@@ -410,12 +413,15 @@
     const v = D.votes.find((x) => x.id === id);
     if (!v) { main.innerHTML = `<p>We couldn't find that vote. <a href="#/votes">See all votes</a></p>`; return; }
     const people = delegation().filter((m) => m.chamber === v.ch);
-    main.innerHTML = `<a href="#/votes">‹ The Docket</a>${voteCard(v)}
+    if (!viewVote.seen || viewVote.seen !== v.id) learn(topicsOfVote(v));
+    viewVote.seen = v.id;
+    main.innerHTML = `<a href="#/votes">‹ The Docket</a>${voteCard(v)}${topicChips(v)}
       <section class="card">
         <h2>Your instruction</h2>
         <p>Tell your ${v.ch === "Senate" ? "senators" : "representative"} where you stand on ${esc(v.title)}. You write it; you send it.</p>
         ${people.length ? `<div class="row">${people.map((m) => `<a class="btn" href="#/write/${esc(m.id)}?vote=${encodeURIComponent(v.id)}">Write to ${honor(m)} ${esc(m.last)}</a>`).join("")}</div>` : `<p><a href="#/">Add your ZIP code</a> first so we know who represents you.</p>`}
       </section>`;
+    bindChips(v);
   }
 
   // ---------- My Charter: broad stance questions + bill questions ----------
@@ -461,7 +467,7 @@
       <p class="muted" style="font-size:14px">Your answers stay on this device. They are never sent anywhere.</p>
       <div class="row"><a class="btn" href="#/">See my delegation</a><button class="linkbtn" id="clearAns">Clear my answers</button></div>`;
     const rerender = (focusSel) => { const y = scrollY; viewCharter(); scrollTo(0, y); if (focusSel) { const nb = main.querySelector(focusSel); if (nb) nb.focus(); } };
-    main.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { S.answers[b.dataset.q] = b.dataset.a; delete S.exceptions[b.dataset.q]; save(); rerender(`[data-q="${b.dataset.q}"][data-a="${b.dataset.a}"]`); }));
+    main.querySelectorAll("[data-q]").forEach((b) => (b.onclick = () => { if (S.answers[b.dataset.q] !== b.dataset.a) learn(topicsOfQuestion(b.dataset.q)); S.answers[b.dataset.q] = b.dataset.a; delete S.exceptions[b.dataset.q]; save(); rerender(`[data-q="${b.dataset.q}"][data-a="${b.dataset.a}"]`); }));
     main.querySelectorAll("[data-upd]").forEach((b) => (b.onclick = () => {
       const q = D.questions.find((x) => x.id === b.dataset.upd), t = q && (q.tests || []).find((x) => x.p === b.dataset.p); if (!t) return;
       // A Yes on the bill means answer t.yes on the broad question; a No means the opposite.
@@ -701,10 +707,137 @@
       <p class="muted">WeHold is an independent, nonpartisan project. It is not affiliated with, endorsed by, or speaking for any government agency or political party. The code is open at <a href="https://github.com/nhillis41-pixel/wehold" target="_blank" rel="noopener">github.com/nhillis41-pixel/wehold</a>.</p>`;
   }
 
+  // ---------- WeHold Plus: smart alerts ----------
+  // Interest, never stance: this device counts which topics a person reads about, asks before following one,
+  // and builds alerts from public data. Nothing here leaves the device. Phone notifications come with the app-store
+  // version, through anonymous topic channels named by topic id.
+  const AK = "wehold-alerts";
+  const A = Object.assign({ reads: {}, follow: {}, asked: {}, read: {} }, (() => { try { return JSON.parse(localStorage.getItem(AK) || "{}"); } catch (e) { return {}; } })());
+  const saveA = () => { try { localStorage.setItem(AK, JSON.stringify(A)); } catch (e) { /* private mode */ } };
+  const ASK_AFTER = 3, ASK_AGAIN_DAYS = 30, ALERT_DAYS = 60, NEW_DAYS = 14;
+  const todayISO = () => new Date().toISOString().slice(0, 10);
+  const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
+  function indexTopics() {
+    D.TM = {}; D.tagTopic = {}; D.ptTopic = {};
+    (D.topics || []).forEach((t) => {
+      D.TM[t.id] = t;
+      (t.tags || []).forEach((g) => (D.tagTopic[g.toLowerCase()] = t.id));
+      (t.principleTopics || []).forEach((g) => (D.ptTopic[g] = t.id));
+    });
+  }
+  function topicsOfVote(v) {
+    const out = new Set();
+    (v.tags || []).forEach((g) => { const id = D.tagTopic && D.tagTopic[g.toLowerCase()]; if (id) out.add(id); });
+    const L = linkFor(v.id);
+    [...((L && L.q.tests) || []), ...(v.tests || [])].forEach((t) => { const p = D.PM[t.p]; const id = p && D.ptTopic[p.topic]; if (id) out.add(id); });
+    return [...out];
+  }
+  function topicsOfQuestion(id) {
+    const p = D.PM[id]; if (p) return D.ptTopic[p.topic] ? [D.ptTopic[p.topic]] : [];
+    const q = D.questions.find((x) => x.id === id); if (!q) return [];
+    const out = new Set();
+    (q.tests || []).forEach((t) => { const pp = D.PM[t.p]; if (pp && D.ptTopic[pp.topic]) out.add(D.ptTopic[pp.topic]); });
+    (q.votes || []).forEach((l) => { const v = D.votes.find((x) => x.id === l.vote); if (v) topicsOfVote(v).forEach((t) => out.add(t)); });
+    return [...out];
+  }
+  function learn(ids) {
+    if (!plusOn("alerts") || !ids || !ids.length) return;
+    ids.forEach((id) => (A.reads[id] = (A.reads[id] || 0) + 1));
+    saveA();
+  }
+  // At most one gentle question at a time, and never again for 30 days after "Not now".
+  function maybeAsk() {
+    if (!plusOn("alerts")) return;
+    const t = Object.keys(A.reads).filter((id) => D.TM[id] && !A.follow[id] && A.reads[id] >= ASK_AFTER && !(A.asked[id] && daysBetween(A.asked[id], todayISO()) < ASK_AGAIN_DAYS)).sort((a, b) => A.reads[b] - A.reads[a])[0];
+    if (!t || document.getElementById("topic-ask")) return;
+    const el = document.createElement("section");
+    el.id = "topic-ask"; el.className = "card noprint"; el.setAttribute("role", "dialog"); el.setAttribute("aria-label", "Follow a topic");
+    el.innerHTML = `<p style="margin:0"><strong>You've been following ${esc(D.TM[t].name)} bills.</strong> Want alerts when one comes up for a vote?</p><div class="row"><button class="btn small" type="button" data-ask="yes">Yes</button><button class="btn small ghost" type="button" data-ask="no">Not now</button></div>`;
+    main.prepend(el);
+    el.querySelectorAll("[data-ask]").forEach((b) => (b.onclick = () => {
+      if (b.dataset.ask === "yes") { A.follow[t] = 1; toast(`Following ${D.TM[t].name}. Change it any time in My topics.`); }
+      A.asked[t] = todayISO(); saveA(); el.remove();
+    }));
+  }
+  const followed = () => Object.keys(A.follow).filter((id) => A.follow[id] && D.TM[id]);
+  function alertsList() {
+    const out = [], today = todayISO(), F = new Set(followed()), del = delegation();
+    const recentEnough = (d) => d && daysBetween(d, today) <= ALERT_DAYS;
+    for (const v of D.votes) {
+      if (!recentEnough(v.date)) continue;
+      const hit = topicsOfVote(v).filter((t) => F.has(t));
+      if (hit.length) out.push({ key: "v:" + v.id, date: v.date, kind: "topic", topic: hit[0], href: `#/vote/${v.id}`, text: `The ${v.ch} voted on ${v.title}${v.q ? ` (${v.q.split(" · ")[0].toLowerCase()})` : ""}: ${v.result || (v.pass ? "passed" : "failed")}${v.tally ? `, ${v.tally}` : ""}.` });
+      for (const m of del) {
+        const c = compare(m, v);
+        if (c && c.kind === "diff") out.push({ key: `d:${v.id}:${m.id}`, date: v.date, kind: "diff", href: `#/vote/${v.id}`, text: `${honor(m)} ${m.last} voted ${LABEL[c.p] || c.p} on ${v.title}, different from your answer (${c.label}).` });
+        else if (v.pos[m.id] === "NV") out.push({ key: `m:${v.id}:${m.id}`, date: v.date, kind: "miss", href: `#/vote/${v.id}`, text: `${honor(m)} ${m.last} did not vote on ${v.title}.` });
+      }
+    }
+    for (const q of D.questions) {
+      if (q.status !== "upcoming") continue;
+      const hit = topicsOfQuestion(q.id).filter((t) => F.has(t));
+      if (hit.length) out.push({ key: "u:" + q.id + ":" + (q.expected || ""), date: today, kind: "upcoming", topic: hit[0], href: "#/charter", text: `Coming up${q.expected ? ` (${q.expected})` : ""}: ${q.bill ? q.bill.label + ", " : ""}${q.sum || q.text}` });
+    }
+    out.forEach((x) => (x.fresh = !A.read[x.key] && daysBetween(x.date, today) <= NEW_DAYS));
+    return out.sort((a, b) => (b.date || "").localeCompare(a.date || "") || (a.kind === "upcoming" ? -1 : 1));
+  }
+  const newAlertCount = () => (plusOn("alerts") ? alertsList().filter((x) => x.fresh).length : 0);
+  async function weeklyBriefing() {
+    const recent = await loadRecent(), today = todayISO();
+    const week = recent.filter((r) => r.date && daysBetween(r.date, today) <= 7);
+    const del = delegation();
+    const keyWeek = D.votes.filter((v) => v.date && daysBetween(v.date, today) <= 7);
+    const byCh = { House: week.filter((r) => r.ch === "House").length, Senate: week.filter((r) => r.ch === "Senate").length };
+    const att = del.map((m) => { const rs = week.filter((r) => r.ch === m.chamber && r.votes && m.id in r.votes); return { m, n: rs.length, missed: rs.filter((r) => r.votes[m.id] === "X").length }; });
+    return `<section class="card stack"><div><span class="label muted">Weekly briefing</span><h2 style="margin:2px 0">The last 7 days</h2></div>
+      <p>${byCh.House + byCh.Senate ? `Congress held <strong>${byCh.House + byCh.Senate}</strong> recorded vote${byCh.House + byCh.Senate === 1 ? "" : "s"} (House ${byCh.House}, Senate ${byCh.Senate}).` : "Congress held no recorded votes."}${keyWeek.length ? ` WeHold summarized ${keyWeek.length} of them:` : ""}</p>
+      ${keyWeek.length ? `<ul class="list">${keyWeek.map((v) => `<li><span><a href="#/vote/${esc(v.id)}">${esc(v.title)}</a><br><span class="muted" style="font-size:13px">${esc(v.ch)} · ${fmtDate(v.date)} · ${esc(v.q ? v.q.split(" · ")[0] + ": " : "")}${esc(v.result || "")}</span></span></li>`).join("")}</ul>` : ""}
+      ${att.length ? `<div><p class="label">Your officials' attendance this week</p><ul class="list">${att.map((x) => `<li><span>${honor(x.m)} ${esc(x.m.last)}</span><span class="muted">${x.n ? `missed ${x.missed} of ${x.n}` : "no votes"}</span></li>`).join("")}</ul></div>` : ""}
+      <p class="muted" style="font-size:13px">In the app-store version this arrives as a notification every Sunday.</p></section>`;
+  }
+  const KIND = { topic: "Topic you follow", upcoming: "Coming up", diff: "Voted differently from you", miss: "Missed vote" };
+  async function viewAlerts() {
+    if (!plusOn("alerts")) return plusLockedFor("Smart alerts", "Alerts when a bill on a topic you follow comes up for a vote, when your officials vote differently from your answers or miss a vote, and a weekly briefing.");
+    const list = alertsList(), F = followed();
+    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus · Smart alerts</span><h1>Alerts</h1>
+      <p class="lede">Built on this device from the official record, your answers and the topics you follow. WeHold never learns which side you're on.</p></header>
+      <p class="row noprint"><a class="btn small ghost" href="#/topics">My topics${F.length ? ` (${F.length})` : ""}</a></p>
+      ${!F.length ? `<p class="card">You're not following any topics yet. <a href="#/topics">Choose topics</a>, or keep reading and WeHold will ask before following one.</p>` : ""}
+      ${!S.state ? `<p class="card"><a href="#/">Add your ZIP code</a> to get alerts about your own officials.</p>` : ""}
+      ${list.length ? `<section class="stack">${list.map((x) => `<a class="card linkcard" href="${esc(x.href)}"><span class="stack" style="gap:2px"><span class="label muted">${esc(KIND[x.kind])}${x.topic ? " · " + esc(D.TM[x.topic].name) : ""} · ${fmtDate(x.date)}${x.fresh ? ` <span class="pill new">New</span>` : ""}</span><span>${esc(x.text)}</span></span><span class="go" aria-hidden="true">→</span></a>`).join("")}</section>` : `<p class="muted">No alerts from the last ${ALERT_DAYS} days.</p>`}
+      <div id="briefing"></div>`;
+    list.forEach((x) => (A.read[x.key] = 1)); saveA();
+    const b = document.getElementById("briefing"); if (b) b.innerHTML = await weeklyBriefing();
+  }
+  function viewTopics() {
+    if (!plusOn("alerts")) return plusLockedFor("My topics", "Choose the topics you want alerts about. Part of WeHold Plus smart alerts.");
+    const learned = Object.values(A.reads).reduce((a, b) => a + b, 0);
+    main.innerHTML = `<a href="#/alerts">‹ Alerts</a><header class="pagehead"><span class="eyebrow">WeHold Plus · Smart alerts</span><h1>My topics</h1>
+      <p class="lede">Get alerts when a bill on these topics comes up for a vote. Following a topic says what you care about, not which side you're on.</p></header>
+      <ul class="list card">${(D.topics || []).map((t) => `<li><span><strong>${esc(t.name)}</strong>${A.reads[t.id] ? `<br><span class="muted" style="font-size:13px">You've read ${A.reads[t.id]} item${A.reads[t.id] === 1 ? "" : "s"} on this</span>` : ""}</span><button class="btn small${A.follow[t.id] ? "" : " ghost"}" type="button" data-follow="${esc(t.id)}" aria-pressed="${!!A.follow[t.id]}">${A.follow[t.id] ? "Following" : "Follow"}</button></li>`).join("")}</ul>
+      <section class="card"><h3>What WeHold keeps on this device</h3><p>A count of how many times you've opened or answered something on each topic (${learned} so far), the topics you follow, and which alerts you've seen. It never leaves this device and never includes your answers' direction. When phone notifications arrive with the app-store version, your phone will sign up for topic channels with an anonymous code, so WeHold still won't know who you are.</p>
+      <button class="linkbtn" type="button" id="forget">Clear what WeHold has learned on this device</button></section>`;
+    main.querySelectorAll("[data-follow]").forEach((b) => (b.onclick = () => { const id = b.dataset.follow; if (A.follow[id]) delete A.follow[id]; else { A.follow[id] = 1; delete A.asked[id]; } saveA(); const y = scrollY; viewTopics(); scrollTo(0, y); }));
+    document.getElementById("forget").onclick = () => { A.reads = {}; A.asked = {}; saveA(); toast("Cleared. Topics you follow are kept."); viewTopics(); };
+  }
+  function topicChips(v) {
+    if (!plusOn("alerts")) return "";
+    const ts = topicsOfVote(v); if (!ts.length) return "";
+    return `<section class="card noprint"><p class="label" style="margin-top:0">Topics</p><div class="row">${ts.map((id) => `<button class="btn small${A.follow[id] ? "" : " ghost"}" type="button" data-chip="${esc(id)}" aria-pressed="${!!A.follow[id]}">${A.follow[id] ? "✓ Following " : "Follow "}${esc(D.TM[id].name)}</button>`).join("")}</div></section>`;
+  }
+  function bindChips(v) {
+    main.querySelectorAll("[data-chip]").forEach((b) => (b.onclick = () => { const id = b.dataset.chip; if (A.follow[id]) delete A.follow[id]; else { A.follow[id] = 1; delete A.asked[id]; toast(`Following ${D.TM[id].name}.`); } saveA(); viewVote(v.id); }));
+  }
+  function plusLockedFor(title, blurb) {
+    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>${esc(title)}</h1><p class="lede">${esc(blurb)} It's part of WeHold Plus, which is being tested now.</p></header><p><a class="btn" href="#/plus">About WeHold Plus</a></p>`;
+  }
+
   // ---------- WeHold Plus: report card ----------
   // Built only from the user's own answers and official votes, on this device. Never a grade or a label.
   const plusOn = (f) => !!(window.WeHoldPlus && window.WeHoldPlus.isOn(f));
   function topicOf(v) {
+    const ct = topicsOfVote(v)[0];
+    if (ct) return D.TM[ct].name;
     const L = linkFor(v.id);
     const t = (L && (L.q.tests || [])[0]) || (v.tests || [])[0];
     if (t && D.PM[t.p]) return D.PM[t.p].topic;
@@ -855,7 +988,7 @@
     const [path, qs] = raw.split("?");
     const params = new URLSearchParams(qs || "");
     const parts = path.split("/").filter(Boolean);
-    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home" }[parts[0] || ""];
+    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home", alerts: "home", topics: "home" }[parts[0] || ""];
     document.querySelectorAll("[data-nav]").forEach((a) => (a.dataset.nav === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (parts[0] === "member") viewMember(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "votes") viewVotes();
@@ -864,12 +997,15 @@
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
     else if (parts[0] === "where") viewWhere();
+    else if (parts[0] === "alerts") viewAlerts();
+    else if (parts[0] === "topics") viewTopics();
     else if (parts[0] === "report") viewReport(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "compare") viewCompare(params);
     else if (parts[0] === "plus" && window.WeHoldPlus) window.WeHoldPlus.view(main, params, toast);
     else if (parts[0] === "results") viewResults();
     else viewHome();
     window.scrollTo(0, 0);
+    if (parts[0] !== "plus") maybeAsk();
   }
   window.addEventListener("hashchange", render);
   loadData().then(() => (window.WeHoldPlus ? window.WeHoldPlus.init() : null)).then(render).catch(() => { main.innerHTML = `<p>WeHold couldn't load its data. Refresh the page to try again.</p>`; });
