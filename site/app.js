@@ -905,8 +905,9 @@
         ${t.self ? barRow("The candidate's own money and loans", t.self, t.raised) : ""}
         ${t.transfers ? barRow("Transfers from joint fundraising committees", t.transfers, t.raised) : ""}
       </ul></section>
-      ${mo.sizes ? `<section class="card"><h2>Gift sizes from individuals</h2><ul class="list">${mo.sizes.map((s) => barRow(esc(s.label), s.total, ind)).join("")}</ul>
-        <p class="muted" style="font-size:13px">Gifts under $200 include those campaigns aren't required to itemize.</p></section>` : ""}
+      ${mo.sizes ? (() => { const st = mo.sizes.reduce((a, s) => a + s.total, 0); return `<section class="card"><h2>Gift sizes from individuals</h2><ul class="list">${mo.sizes.map((s) => barRow(esc(s.label), s.total, st)).join("")}</ul>
+        <p class="muted" style="font-size:13px">Gifts under $200 include those campaigns aren't required to itemize.</p></section>`; })() : ""}
+      ${!mo.sizes || !mo.states ? `<section class="card"><h2>Gift sizes and donors' states</h2><p class="muted">Not shown for this campaign. Much of its individual money came through joint fundraising committees or online fundraising platforms, and the FEC's breakdown by gift size and state counts those gifts differently from the campaign's own totals. WeHold leaves the breakdown out rather than show numbers that don't add up. <a href="${esc(fecUrl)}" target="_blank" rel="noopener">See the FEC's breakdown</a>.</p></section>` : ""}
       ${mo.states && mo.states.total ? `<section class="card"><h2>Home state or elsewhere</h2><ul class="list">${barRow(`From ${esc(STATES[m.state] || m.state)}`, mo.states.home, mo.states.total)}${barRow("From other states", mo.states.total - mo.states.home, mo.states.total)}</ul>
         <p class="muted" style="font-size:13px">Itemized individual gifts (over $200), by the donor's address. Top states: ${mo.states.top.map((s) => `${esc(s.state)} ${usd(s.total)}`).join(", ")}.</p></section>` : ""}
       ${P.list.length ? `<section class="card"><h2>PACs by type</h2><ul class="list">${Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => barRow(esc(k), v, P.total)).join("")}</ul>
