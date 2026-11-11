@@ -11,6 +11,7 @@
   {"id": "elections", "name": "Elections & voting", "principleTopics": ["Elections"], "tags": ["Elections", "Voting"]},
   {"id": "ethics", "name": "Ethics & Congress", "principleTopics": ["Ethics in Congress"], "tags": ["Ethics", "Congressional stock trading", "Impeachment"]},
   {"id": "work", "name": "Jobs, trade & retirement", "principleTopics": ["Work & trade"], "tags": ["Retirement", "Employee ownership", "Trade", "Tariffs", "Labor", "Social Security"]},
+  {"id": "finance", "name": "Banking & finance", "principleTopics": [], "tags": ["Banking", "Finance", "Financial services", "Insurance", "Securities", "Cryptocurrency", "Credit cards", "Consumer finance"]},
   {"id": "tech", "name": "Technology & privacy", "principleTopics": ["Technology & privacy"], "tags": ["Technology", "Privacy", "Artificial intelligence"]},
   {"id": "education", "name": "Education & family", "principleTopics": ["Education & family"], "tags": ["Education", "College sports", "Child care", "Families"]},
   {"id": "farming", "name": "Farming & rural America", "principleTopics": [], "tags": ["Agriculture", "Farming", "Farm bill", "Rural"]},
