@@ -1,0 +1,159 @@
+name: Build phone apps
+
+# Builds the iPhone and Android apps from site/ and mobile/.
+# - Every run: an Android test app (APK) you can install, and an iPhone build check.
+# - When the App Store Connect key is saved in the repo's secrets: signs the iPhone app and sends it to TestFlight.
+# - When the Android upload key and Google Play key are saved: signs the Android app and sends it to Play internal testing.
+# See mobile/README.md for the secrets.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+      - "site/**"
+      - "!site/data/**"
+      - ".github/workflows/mobile-build.yml"
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Send to TestFlight / Play testing (needs the store keys)"
+        type: boolean
+        default: true
+
+concurrency:
+  group: mobile-build
+  cancel-in-progress: true
+
+env:
+  BUILD_NUMBER: ${{ github.run_number }}
+  VERSION_NAME: "1.0"
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Install and copy the web app
+        run: |
+          npm ci
+          npm run web
+          npx cap sync android
+      - name: Add Firebase settings for notifications (if saved)
+        env:
+          GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+        run: |
+          if [ -n "$GOOGLE_SERVICES_JSON" ]; then printf '%s' "$GOOGLE_SERVICES_JSON" > android/app/google-services.json; fi
+      - name: Build test app (APK)
+        working-directory: mobile/android
+        run: ./gradlew --no-daemon assembleDebug -PversionCode=$BUILD_NUMBER -PversionName=$VERSION_NAME
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wehold-android-test-${{ github.run_number }}
+          path: mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+      - name: Build signed release (AAB)
+        id: release
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        working-directory: mobile/android
+        run: |
+          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then echo "No Android upload key saved yet; skipping release build."; exit 0; fi
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/upload.jks"
+          export ANDROID_KEYSTORE_FILE="$RUNNER_TEMP/upload.jks"
+          ./gradlew --no-daemon bundleRelease -PversionCode=$BUILD_NUMBER -PversionName=$VERSION_NAME
+          echo "aab=mobile/android/app/build/outputs/bundle/release/app-release.aab" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: steps.release.outputs.aab != ''
+        with:
+          name: wehold-android-release-${{ github.run_number }}
+          path: ${{ steps.release.outputs.aab }}
+          retention-days: 30
+      - name: Send to Google Play internal testing
+        if: steps.release.outputs.aab != '' && (github.event_name == 'push' || inputs.release)
+        env:
+          PLAY_JSON: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+        working-directory: .
+        run: |
+          if [ -z "$PLAY_JSON" ]; then echo "No Google Play key saved yet; skipping upload."; exit 0; fi
+          echo "has_play=1" >> "$GITHUB_ENV"
+      - uses: r0adkll/upload-google-play@v1
+        if: env.has_play == '1'
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.weholdllc.wehold
+          releaseFiles: ${{ steps.release.outputs.aab }}
+          track: internal
+          status: draft
+
+  ios:
+    runs-on: macos-15
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Use the newest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)" && xcodebuild -version
+      - name: Install and copy the web app
+        run: |
+          npm ci
+          npm run web
+          npx cap sync ios
+      - name: Build check (simulator, unsigned)
+        working-directory: mobile/ios/App
+        run: |
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -20
+      - name: Sign and send to TestFlight
+        if: github.event_name == 'push' || inputs.release
+        env:
+          ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          ASC_KEY: ${{ secrets.APP_STORE_CONNECT_KEY }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        working-directory: mobile/ios/App
+        run: |
+          if [ -z "$ASC_KEY" ] || [ -z "$TEAM_ID" ]; then echo "No App Store Connect key saved yet; skipping TestFlight."; exit 0; fi
+          KEY="$RUNNER_TEMP/AuthKey.p8"; printf '%s' "$ASC_KEY" > "$KEY"
+          AUTH=(-allowProvisioningUpdates -authenticationKeyPath "$KEY" -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID")
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/WeHold.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" MARKETING_VERSION="$VERSION_NAME" \
+            "${AUTH[@]}" archive | tail -20
+          cat > "$RUNNER_TEMP/export.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>app-store-connect</string>
+            <key>destination</key><string>upload</string>
+            <key>teamID</key><string>$TEAM_ID</string>
+            <key>signingStyle</key><string>automatic</string>
+            <key>manageAppVersionAndBuildNumber</key><false/>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/WeHold.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/export.plist" -exportPath "$RUNNER_TEMP/export" "${AUTH[@]}" | tail -20
+          rm -f "$KEY"
