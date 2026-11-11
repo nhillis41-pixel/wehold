@@ -1,0 +1,66 @@
+{
+ "key": "119-hr-9340",
+ "title": "Ratepayer Protection Act (H.R. 9340)",
+ "headline": "Asks state utility regulators to consider making very large electricity users, such as data centers, pay the full cost of the grid upgrades built to serve them, so those costs don't land on other customers' bills.",
+ "sections": [
+  {
+   "h": "Who counts as a large-load customer",
+   "p": [
+    "A business using electricity mainly to run data storage and computing (data centers) with peak demand of 100 megawatts or more at one site or campus."
+   ]
+  },
+  {
+   "h": "The standard states must consider",
+   "p": [
+    "Utility rates for these customers would be set to recover the full added cost of any generation, transmission or distribution upgrade needed to serve them.",
+    "The rate would also cover costs left behind if the customer ends its contract or stops buying power.",
+    "Before building an upgrade, the utility would require the customer to put up financial guarantees or contributions to cover it."
+   ]
+  },
+  {
+   "h": "What \"consider\" means",
+   "p": [
+    "State utility commissions and utilities they don't regulate must formally consider adopting the standard, but the bill does not require them to adopt it."
+   ]
+  }
+ ],
+ "changes": [
+  "Adds a new federal standard to the Public Utility Regulatory Policies Act that states must weigh for data-center rates.",
+  "Leaves the final decision with each state's utility regulators."
+ ],
+ "affects": [
+  "Data center developers and the tech companies that use them.",
+  "Households and small businesses whose electricity rates can rise when utilities build for large new customers.",
+  "State utility commissions."
+ ],
+ "for": [
+  {
+   "point": "The country needs to build power for data centers without passing those costs on to working families and small businesses, and this bill sets a clear standard for that.",
+   "who": "Sen. Husted, the bill's Senate sponsor, and the White House",
+   "source": {
+    "name": "Tom's Hardware",
+    "url": "https://www.tomshardware.com/tech-industry/data-centers/us-senate-kills-bill-that-could-potentially-shield-americans-from-skyrocketing-power-bills-due-to-ai-data-centers-opponents-say-bill-is-toothless-and-doesnt-do-enough-to-protect-citizens"
+   }
+  },
+  {
+   "point": "The House passed it 417–3, showing broad agreement on the goal.",
+   "who": "supporters in both parties",
+   "source": {
+    "name": "Congress.gov",
+    "url": "https://www.congress.gov/bill/119th-congress/house-bill/9340/all-info"
+   }
+  }
+ ],
+ "against": [
+  {
+   "point": "Because states only have to consider the standard, the bill doesn't actually require anything and won't reliably protect customers. Opponents want a version that requires regulators to make data centers cover their costs.",
+   "who": "most Senate Democrats",
+   "source": {
+    "name": "Tom's Hardware",
+    "url": "https://www.tomshardware.com/tech-industry/data-centers/us-senate-kills-bill-that-could-potentially-shield-americans-from-skyrocketing-power-bills-due-to-ai-data-centers-opponents-say-bill-is-toothless-and-doesnt-do-enough-to-protect-citizens"
+   }
+  }
+ ],
+ "next": "The Senate's vote to begin debate fell three short of 60 on September 30. Similar data-center cost rules are now part of the Senate's energy and permitting package (H.R. 2347). This bill dies when the Congress ends on January 3, 2027 unless the Senate takes it up again.",
+ "updated": "2026-11-11"
+}

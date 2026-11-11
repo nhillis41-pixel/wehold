@@ -1,0 +1,83 @@
+{
+ "key": "119-hr-2347",
+ "title": "Energy & permitting package (H.R. 2347)",
+ "headline": "The Senate is using a House bill about taxes on abuse-survivor settlements as the vehicle for a large energy and permitting overhaul, called the Bipartisan American Affordability and Jobs Act of 2026. The original tax change is kept as one part.",
+ "sections": [
+  {
+   "h": "Division A: Environmental reviews and permits",
+   "p": [
+    "Sets a deadline, generally 150 days, for most lawsuits challenging a federal environmental review (NEPA) or a Clean Water Act section 404 permit, and requires the person suing to show direct harm.",
+    "Directs that state water-quality conditions on federal permits be the least burdensome option.",
+    "Limits federal agencies from revoking or materially changing permits already in effect, with listed exceptions.",
+    "Also changes rules for the Endangered Species Act, nuclear licensing, wildfire-related emissions and brownfield cleanups."
+   ]
+  },
+  {
+   "h": "Division B: Energy and the power grid",
+   "p": [
+    "Gives federal regulators (FERC) broader authority to approve large interstate power lines, generally 230 kilovolts and up.",
+    "Expects owners of data centers to pay the full cost of the grid service and upgrades built to serve them, and gives FERC 90 days to revise its transmission pricing policy.",
+    "Changes rules on grid connection waiting lists, onshore and offshore leasing, geothermal, hydropower and historic-preservation reviews for energy projects."
+   ]
+  },
+  {
+   "h": "Division C: Taxes on abuse-survivor settlements (the original House bill)",
+   "p": [
+    "Lets people exclude from federal income tax the damages they receive in a judgment or settlement for sexual abuse, even without medical records of a physical injury. Today the IRS generally taxes such damages unless there was observable physical harm.",
+    "If a settlement says the damages are for sexual abuse, the IRS would have to prove otherwise in court."
+   ]
+  }
+ ],
+ "changes": [
+  "Shorter windows for lawsuits against energy, water and infrastructure permits (generally 150 days) and a direct-harm requirement to sue.",
+  "More federal power to approve interstate transmission lines that states or localities have not approved.",
+  "Permits already issued would be harder for a later administration to revoke.",
+  "Data centers would be expected to pay for grid upgrades built for them.",
+  "Abuse survivors' settlement damages would no longer depend on proof of physical injury to be tax-free."
+ ],
+ "affects": [
+  "Developers of power lines, pipelines, mines, wind, solar, nuclear and other energy projects, and the agencies that permit them.",
+  "People and groups who challenge projects in court, including landowners, tribes and environmental organizations.",
+  "Electricity customers, through transmission costs and data center pricing rules.",
+  "Survivors of sexual abuse who receive damages in a settlement or judgment."
+ ],
+ "cost": "No Congressional Budget Office estimate has been published yet for the Senate package. CBO's estimate below covers only the original House tax bill. Supporters and the White House say the package would lower power bills over time; no per-household savings figure has been published, and permitting changes take years to affect construction.",
+ "for": [
+  {
+   "point": "Faster, more predictable permits would let the country build power lines and power plants sooner, which supporters say will bring down electricity costs and add construction jobs.",
+   "who": "the President, oil, gas, wind and solar trade groups, and building-trades unions",
+   "source": {
+    "name": "Energy News Beat",
+    "url": "https://energynewsbeat.co/regulations/73-25-the-senate-moves-to-build-faster-your-power-bill-will-have-to-wait/"
+   }
+  },
+  {
+   "point": "Long-distance transmission is the main bottleneck for new power of every kind, and the bill's transmission and data-center cost rules address it directly.",
+   "who": "Sen. Heinrich and other bipartisan sponsors",
+   "source": {
+    "name": "Energy News Beat",
+    "url": "https://energynewsbeat.co/regulations/73-25-the-senate-moves-to-build-faster-your-power-bill-will-have-to-wait/"
+   }
+  }
+ ],
+ "against": [
+  {
+   "point": "Short lawsuit deadlines, a direct-harm requirement and limits on revoking permits would weaken environmental review and the public's ability to challenge harmful projects.",
+   "who": "Sierra Club, Conservation Law Foundation and other environmental groups",
+   "source": {
+    "name": "Energy News Beat",
+    "url": "https://energynewsbeat.co/regulations/73-25-the-senate-moves-to-build-faster-your-power-bill-will-have-to-wait/"
+   }
+  },
+  {
+   "point": "The changes threaten tribal consultation and lands, and a package this large should wait for the new Congress and fuller debate.",
+   "who": "National Congress of American Indians; Sens. Merkley and Van Hollen",
+   "source": {
+    "name": "Energy News Beat",
+    "url": "https://energynewsbeat.co/regulations/73-25-the-senate-moves-to-build-faster-your-power-bill-will-have-to-wait/"
+   }
+  }
+ ],
+ "next": "The Senate voted 62–21 on November 10 to begin debate. A final Senate vote could come this month. Because H.R. 2347 started in the House, the House would then have to pass the Senate's version, and some House leaders of both parties have voiced doubts. Bills not enacted by January 3, 2027, when this Congress ends, have to start over.",
+ "updated": "2026-11-11"
+}

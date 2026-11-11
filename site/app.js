@@ -328,6 +328,7 @@
     const tools = [];
     if (plusOn("alerts")) { const n = newAlertCount(); tools.push({ href: "#/alerts", img: "alerts", name: "Alerts", line: n ? `${n} new` : followed().length ? "Topics you follow" : "Pick topics to follow", hot: n > 0 }); }
     if (plusOn("reportCard") && del.length) tools.push({ href: "#/report", img: "report", name: "Report card", line: "How they line up with you" });
+    if (plusOn("billDetail")) tools.push({ href: "#/bills", img: "bill", name: "Bill breakdowns", line: "Plain English, both sides, every vote" });
     if (plusOn("money")) tools.push({ href: "#/money", img: "money", name: "Follow the money", line: "Where campaign money comes from" });
     const extras = [days != null ? `<a href="#/where">Where and when to vote</a>` : "", resultsOn ? `<a href="#/results">Election results</a>` : ""].filter(Boolean);
     main.innerHTML = `
@@ -442,7 +443,7 @@
     const people = delegation().filter((m) => m.chamber === v.ch);
     if (!viewVote.seen || viewVote.seen !== v.id) learn(topicsOfVote(v));
     viewVote.seen = v.id;
-    main.innerHTML = `<a href="#/votes">‹ The Docket</a>${voteCard(v)}${topicChips(v)}<div id="vote-money"></div>
+    main.innerHTML = `<a href="#/votes">‹ The Docket</a>${voteCard(v)}${plusOn("billDetail") && v.bill && billKey(v.bill.label) ? `<a class="card linkcard" href="#/bill/${esc(billKey(v.bill.label))}"><span class="thumb"><img src="img/bill.jpg" alt="" width="1000" height="750"></span><span class="stack" style="gap:2px"><strong style="font-size:17px">Bill breakdown <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">${esc(v.bill.label)} section by section, both sides, and every vote along the way</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}${topicChips(v)}<div id="vote-money"></div>
       <section class="card">
         <h2>Your instruction</h2>
         <p>Tell your ${v.ch === "Senate" ? "senators" : "representative"} where you stand on ${esc(v.title)}. You write it; you send it.</p>
@@ -957,6 +958,74 @@
       <p class="muted" style="font-size:13px">FEC amounts; the topic grouping is WeHold's. A contribution doesn't show why an official voted a certain way.</p></section>`;
   }
 
+  // ---------- WeHold Plus: bill breakdown ----------
+  // Official facts (Congress.gov, CBO, roll calls) in site/data/bills/<key>.json; WeHold's plain-English
+  // write-up and both sides' arguments in site/bills/<key>.json. Neutral, sourced, never a recommendation.
+  const BILL_T = { HR: "hr", S: "s", HRES: "hres", SRES: "sres", HJRES: "hjres", SJRES: "sjres", HCONRES: "hconres", SCONRES: "sconres" };
+  function billKey(label) {
+    const m = String(label || "").replace(/[\s.]/g, "").toUpperCase().match(/^([A-Z]+?)(\d+)$/);
+    return m && BILL_T[m[1]] ? `${D.meta.congress || 119}-${BILL_T[m[1]]}-${Number(m[2])}` : null;
+  }
+  async function loadBill(k) {
+    D.bills = D.bills || {};
+    if (!(k in D.bills)) {
+      const [facts, ed] = await Promise.all([getJSON(`data/bills/${k}.json`).catch(() => null), getJSON(`bills/${k}.json`).catch(() => null)]);
+      D.bills[k] = facts ? { ...facts, ed } : null;
+    }
+    return D.bills[k];
+  }
+  const POS = { Y: "Yea", N: "Nay", X: "NV", P: "Present" };
+  // "Rep. Smucker, Lloyd [R-PA-11]" -> "Rep. Lloyd Smucker"
+  const sponsorName = (n) => { const m = String(n || "").replace(/\s*\[.*\]$/, "").match(/^(\S+\.)\s+([^,]+),\s*(.+)$/); return m ? `${m[1]} ${m[3]} ${m[2]}` : String(n || ""); };
+  const partyShort = (p) => ({ R: "R", D: "D", I: "I", ID: "I" }[p] || p || "");
+  const showMore = (items, n, render, label) => items.length <= n ? items.map(render).join("") :
+    `${items.slice(0, n).map(render).join("")}<details class="more"><summary>${label || `Show all ${items.length}`}</summary>${items.slice(n).map(render).join("")}</details>`;
+  function billStatus(b) {
+    if (b.laws && b.laws.length) return { cls: "law", text: `Became law: Public Law ${b.laws[0].number}` };
+    return { cls: "", text: b.latest && b.latest.text ? `${fmtDate(b.latest.date)}: ${b.latest.text}` : "" };
+  }
+  async function viewBills() {
+    if (!plusOn("billDetail")) return plusLockedFor("Bill breakdown", "Every highlighted bill, section by section in plain English: what it changes, what it costs, who it affects, both sides' arguments and every vote along the way.");
+    const idx = await getJSON("data/bills/index.json").catch(() => ({}));
+    const keys = Object.keys(idx).sort((a, b) => String(idx[b].latest || "").localeCompare(String(idx[a].latest || "")));
+    main.innerHTML = withArt("bill", `<span class="eyebrow">WeHold Plus</span><h1>Bill breakdowns</h1><p class="lede">The bills behind WeHold's key votes, in plain English, with every vote along the way.</p>`) +
+      (keys.length ? `<ul class="docket">${keys.map((k) => `<li class="vrow"><a class="vlink" href="#/bill/${esc(k)}"><span class="vmeta">${esc(idx[k].label)}${idx[k].latest ? `, latest action ${fmtDate(idx[k].latest)}` : ""}</span><span class="vtitle">${esc(idx[k].title || idx[k].label)}</span>${idx[k].plain ? "" : `<span class="vsum">Official summary now; WeHold's plain-English breakdown is coming.</span>`}</a></li>`).join("")}</ul>` : `<p class="muted">Bill breakdowns appear here as they're collected.</p>`);
+  }
+  async function viewBill(k) {
+    if (!plusOn("billDetail")) return plusLockedFor("Bill breakdown", "Every highlighted bill, section by section in plain English: what it changes, what it costs, who it affects, both sides' arguments and every vote along the way.");
+    main.innerHTML = `<a href="#/bills">‹ Bill breakdowns</a><p class="muted">Loading the bill…</p>`;
+    const b = await loadBill(k);
+    if (!b) { main.innerHTML = `<a href="#/bills">‹ Bill breakdowns</a><p>This bill's breakdown isn't ready yet. Bills are collected from Congress.gov every day.</p>`; return; }
+    const e = b.ed || {}, st = billStatus(b), del = delegation();
+    const latestText = (b.texts || []).find((x) => x.url);
+    const voteIds = new Set(D.votes.map((v) => v.id));
+    const rollRow = (r) => {
+      const t = r.totals || {}, mine = del.filter((m) => m.chamber === r.ch && r.pos && r.pos[m.id]);
+      return `<li class="vrow"><${voteIds.has(r.id) ? `a class="vlink" href="#/vote/${esc(r.id)}"` : `div class="vlink"`}>
+          <span class="vmeta">${esc(r.ch)}, ${fmtDate(r.date)}, roll ${esc(r.roll)}</span>
+          <span class="vtitle" style="font-size:16px">${esc(r.question || "")}</span></${voteIds.has(r.id) ? "a" : "div"}>
+        <div class="vfoot"><span class="vres ${/fail|reject|not agreed/i.test(r.result || "") ? "fail" : "pass"}">${esc(r.result || "")}${t.yea != null ? `, ${t.yea}–${t.nay}` : ""}</span>${mine.map((m) => `<span class="pos">${esc(m.last)} ${vpill(POS[r.pos[m.id]] || "Other")}</span>`).join("")}<a href="${esc(r.url)}" target="_blank" rel="noopener" style="font-size:13px">Official record</a></div></li>`;
+    };
+    const side = (title, items) => `<section class="card side"><h3>${title}</h3>${items.map((x) => `<p>${esc(x.point)}${x.who ? ` <span class="muted">(${esc(x.who)})</span>` : ""}${x.source && x.source.url ? ` <a href="${esc(x.source.url)}" target="_blank" rel="noopener" class="src">${esc(x.source.name || "Source")}</a>` : ""}</p>`).join("")}</section>`;
+    main.innerHTML = `<a href="#/bills">‹ Bill breakdowns</a>` + withArt("bill", `<span class="eyebrow">${esc(b.label)}${b.policyArea && !e.title ? `, ${esc(b.policyArea)}` : ""}</span>
+        <h1 class="bill-title">${esc(e.title || b.title || b.label)}</h1>
+        ${e.headline ? `<p class="lede">${esc(e.headline)}</p>` : ""}
+        <p class="muted" style="font-size:14px">${b.sponsor && b.sponsor.name ? `Sponsored by ${esc(sponsorName(b.sponsor.name))} (${esc(partyShort(b.sponsor.party))}-${esc(b.sponsor.state)})${b.cosponsors ? ` with ${b.cosponsors} cosponsor${b.cosponsors === 1 ? "" : "s"}` : ""}. ` : ""}${b.introduced ? `Introduced ${fmtDate(b.introduced)}.` : ""}</p>
+        ${st.text ? `<p class="status ${st.cls}">${esc(st.text)}</p>` : ""}`) + `
+      ${e.sections && e.sections.length ? `<section><h2>In plain English</h2><div class="card sections">${e.sections.map((x, i) => `<details${i === 0 ? " open" : ""}><summary>${esc(x.h)}</summary>${(Array.isArray(x.p) ? x.p : [x.p]).map((p) => `<p>${esc(p)}</p>`).join("")}</details>`).join("")}</div></section>`
+        : b.summary && b.summary.paras.length ? `<section><h2>Official summary</h2><div class="card">${showMore(b.summary.paras, 3, (p) => `<p>${esc(p)}</p>`, "Read the full summary")}<p class="muted" style="font-size:13px">Written by the nonpartisan Congressional Research Service (${esc(b.summary.version || "")}, ${fmtDate(b.summary.date)}). A plain-English breakdown by WeHold is coming.</p></div></section>` : ""}
+      ${e.changes && e.changes.length ? `<section><h2>What it would change</h2><ul class="card plain">${e.changes.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></section>` : ""}
+      ${e.affects && e.affects.length ? `<section><h2>Who it affects</h2><ul class="card plain">${e.affects.map((c) => `<li>${esc(c)}</li>`).join("")}</ul></section>` : ""}
+      ${e.cost || (b.cbo && b.cbo.length) ? `<section><h2>What it costs</h2><div class="card">${e.cost ? `<p>${esc(e.cost)}</p>` : ""}${(b.cbo || []).map((c) => `<p><a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title || "CBO cost estimate")}</a><br><span class="muted" style="font-size:13px">Congressional Budget Office, ${fmtDate(c.date)}${c.about ? `. ${esc(c.about)}` : ""}</span></p>`).join("")}${!e.cost && !(b.cbo || []).length ? "" : ""}</div></section>` : ""}
+      ${(e.for && e.for.length) || (e.against && e.against.length) ? `<section><h2>Both sides</h2><div class="sides">${side("Supporters say", e.for || [])}${side("Opponents say", e.against || [])}</div><p class="muted" style="font-size:13px">Each side's main arguments in WeHold's words, with a source for each. Equal space, no verdict.</p></section>` : ""}
+      ${b.rolls && b.rolls.length ? `<section><h2>Every vote on this bill</h2><ul class="docket">${showMore(b.rolls.slice().reverse(), 6, rollRow)}</ul></section>` : `<section><h2>Every vote on this bill</h2><p class="muted">No recorded roll-call votes yet. Some steps pass by voice vote, which records no names.</p></section>`}
+      ${b.path && b.path.length ? `<section><h2>How it got here</h2><ol class="card path">${showMore(b.path.slice().reverse(), 6, (p) => `<li><span class="muted">${fmtDate(p.date)}</span><span>${esc(p.text)}</span></li>`, "Show the whole path")}</ol></section>` : ""}
+      ${e.next || (b.latest && b.latest.text) ? `<section class="card"><h3>What's next</h3><p>${esc(e.next || `Latest action, ${fmtDate(b.latest.date)}: ${b.latest.text}`)}</p></section>` : ""}
+      ${b.amendmentCount ? `<section><h2>Amendments</h2><div class="card"><p>${b.amendmentCount} amendment${b.amendmentCount === 1 ? " has" : "s have"} been offered.</p>${b.amendments && b.amendments.length ? `<ul class="list">${showMore(b.amendments, 5, (a) => `<li><span><strong>${esc(a.label)}</strong>${a.purpose ? `<br><span class="muted" style="font-size:14px">${esc(a.purpose)}</span>` : ""}</span></li>`)}</ul>` : ""}</div></section>` : ""}
+      <section class="card"><p class="muted" style="font-size:14px">Facts from Congress.gov, the Congressional Budget Office and official House and Senate roll calls${b.checked ? `, checked ${fmtDate(b.checked)}` : ""}.${e.updated ? ` Plain-English write-up by WeHold, updated ${fmtDate(e.updated)}.` : ""}</p>
+        <div class="links">${latestText ? `<a href="${esc(latestText.url)}" target="_blank" rel="noopener">Read the bill (${esc(latestText.type)})</a>` : ""}${b.url ? `<a href="${esc(b.url)}" target="_blank" rel="noopener">${esc(b.label)} on Congress.gov</a>` : ""}</div></section>`;
+  }
+
   // ---------- WeHold Plus: report card ----------
   // Built only from the user's own answers and official votes, on this device. Never a grade or a label.
   const plusOn = (f) => !!(window.WeHoldPlus && window.WeHoldPlus.isOn(f));
@@ -1114,7 +1183,7 @@
     const [path, qs] = raw.split("?");
     const params = new URLSearchParams(qs || "");
     const parts = path.split("/").filter(Boolean);
-    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home", alerts: "home", topics: "home", money: "home" }[parts[0] || ""];
+    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home", alerts: "home", topics: "home", money: "home", bill: "votes", bills: "votes" }[parts[0] || ""];
     document.querySelectorAll("[data-nav]").forEach((a) => (a.dataset.nav === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (parts[0] === "member") viewMember(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "votes") viewVotes();
@@ -1123,6 +1192,8 @@
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
     else if (parts[0] === "where") viewWhere();
+    else if (parts[0] === "bill" && parts[1]) viewBill(decodeURIComponent(parts[1]));
+    else if (parts[0] === "bills") viewBills();
     else if (parts[0] === "money" && parts[1]) viewMoney(decodeURIComponent(parts[1]));
     else if (parts[0] === "money") viewMoneyHome();
     else if (parts[0] === "alerts") viewAlerts();

@@ -24,8 +24,8 @@
   };
 
   // Features that are built and can be opened from the Plus page.
-  const LINKS = { reportCard: "#/report", alerts: "#/alerts", money: "#/money" };
-  const ART = { reportCard: "report", alerts: "alerts", money: "money" };
+  const LINKS = { reportCard: "#/report", alerts: "#/alerts", money: "#/money", billDetail: "#/bills" };
+  const ART = { reportCard: "report", alerts: "alerts", money: "money", billDetail: "bill" };
 
   // ---------- testers: label -> SHA-256 of the invite code (uppercase, no spaces) ----------
   // Never put the codes themselves here; this file is public.

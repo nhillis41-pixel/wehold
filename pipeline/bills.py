@@ -191,7 +191,8 @@ def main(argv=None):
             print(f"  {k}: {e}")
             continue
         write_json(path, rec)
-        index[k] = {"label": rec.get("label"), "title": rec.get("title"), "latest": (rec.get("latest") or {}).get("date"), "rolls": len(rec["rolls"])}
+        ed = read_json(os.path.join(os.path.dirname(SITE_DATA), "bills", k + ".json"), None) or {}
+        index[k] = {"label": rec.get("label"), "title": ed.get("title") or rec.get("title"), "plain": bool(ed.get("sections")), "latest": (rec.get("latest") or {}).get("date"), "rolls": len(rec["rolls"])}
         done += 1
     write_json(os.path.join(OUT, "index.json"), index)
     print(f"Bills: refreshed {done} ({failed} failed){f', {api.calls} Congress.gov requests' if api else ''}.")

@@ -1,0 +1,76 @@
+{
+ "key": "119-hr-7008",
+ "title": "Stop Insider Trading Act (H.R. 7008)",
+ "headline": "Would bar members of Congress, their spouses and dependent children from buying individual stocks, and require public notice before they sell. The Senate package voted on in September also carried a federal voter ID requirement.",
+ "sections": [
+  {
+   "h": "No new stock purchases",
+   "p": [
+    "Members, spouses and dependent children could not buy shares of publicly traded companies or similar investments. Widely held funds, such as mutual funds, and certain trusts are exempt."
+   ]
+  },
+  {
+   "h": "Notice before selling",
+   "p": [
+    "Between 7 and 14 days before a sale, the member must file a public notice of intent to sell, which the House Clerk or Senate Secretary posts online."
+   ]
+  },
+  {
+   "h": "Penalties",
+   "p": [
+    "A violation costs the greater of $2,000 or 10% of the transaction, plus any profit, and a prohibited purchase must be sold. Fines can't be paid with campaign money or office allowances."
+   ]
+  },
+  {
+   "h": "What it doesn't do",
+   "p": [
+    "Members would not have to sell stocks they already own, and the ban does not cover the President, Vice President or Cabinet."
+   ]
+  },
+  {
+   "h": "Added in the Senate package",
+   "p": [
+    "The version the Senate tried to take up was paired with the Voter ID Act (H.R. 9368), which would require photo identification to vote in federal elections."
+   ]
+  }
+ ],
+ "changes": [
+  "Ends new individual stock purchases by members of Congress and their immediate families.",
+  "Adds advance public notice of sales.",
+  "In the Senate package, adds a photo ID requirement for federal elections."
+ ],
+ "affects": [
+  "Members of Congress, their spouses and dependent children.",
+  "In the Senate package, every voter in federal elections."
+ ],
+ "for": [
+  {
+   "point": "Members of Congress shouldn't be buying stocks in companies affected by the laws they write; this bill stops new purchases and makes sales public in advance.",
+   "who": "Republican sponsors and the White House",
+   "source": {
+    "name": "Latin Times",
+    "url": "https://www.latintimes.com/senate-democrats-blocked-bill-banning-congressional-stock-trading-why-republicans-counted-that-599763"
+   }
+  }
+ ],
+ "against": [
+  {
+   "point": "The stock limits are too weak: members keep stocks they already own, and the executive branch isn't covered. Opponents prefer the bipartisan Restore Trust in Congress Act, which requires selling individual stocks.",
+   "who": "most Democrats",
+   "source": {
+    "name": "Latin Times",
+    "url": "https://www.latintimes.com/senate-democrats-blocked-bill-banning-congressional-stock-trading-why-republicans-counted-that-599763"
+   }
+  },
+  {
+   "point": "Attaching an unrelated voter ID requirement turned a stock-trading bill into a package many could not support; some members of both parties said a standalone bill would pass easily.",
+   "who": "Democrats and Rep. Thomas Massie (R-Ky.)",
+   "source": {
+    "name": "Latin Times",
+    "url": "https://www.latintimes.com/senate-democrats-blocked-bill-banning-congressional-stock-trading-why-republicans-counted-that-599763"
+   }
+  }
+ ],
+ "next": "The Senate's vote to begin debate failed 53–47 on September 30, along party lines. The bill dies when this Congress ends on January 3, 2027 unless it is taken up again.",
+ "updated": "2026-11-11"
+}

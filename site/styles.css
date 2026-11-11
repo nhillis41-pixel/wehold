@@ -226,7 +226,7 @@ footer a{color:var(--muted)}
 .tools{gap:12px}
 .tools .sechead{align-items:center;justify-content:flex-start;gap:10px}
 .tools h2{font-size:clamp(22px,3vw,28px)}
-.tool-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.tool-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}
 .tool{display:flex;flex-direction:column;text-decoration:none;color:var(--ink);background:var(--paper);border:1px solid var(--rule);border-radius:var(--r);overflow:hidden;transition:border-color .15s,transform .15s}
 .tool:hover{border-color:var(--navy);color:var(--ink);transform:translateY(-2px)}
 .tool img{width:100%;height:auto;aspect-ratio:16/9;object-fit:cover;object-position:50% 45%;background:#F2EBD9;border-bottom:1px solid var(--rule)}
@@ -266,3 +266,26 @@ footer a{color:var(--muted)}
 .plus-card img{height:auto;width:calc(100% + 40px);margin:-20px -20px 4px;aspect-ratio:16/9;object-fit:cover;border-bottom:1px solid var(--rule);max-width:none}
 .stats-3{grid-template-columns:repeat(3,minmax(0,1fr))}
 @media (max-width:420px){.stats-3 .stat{padding:12px 6px}.stats-3 .big{font-size:24px}}
+
+/* ---------- bill breakdown ---------- */
+.bill-title{font-size:clamp(30px,5vw,48px)}
+.status{font-size:14px;font-weight:700;color:var(--ink-2);border-left:3px solid var(--navy);padding:2px 0 2px 10px;max-width:68ch}
+.status.law{border-color:var(--ochre);color:var(--ochre-ink)}
+.sections{gap:0;padding:6px 20px}
+.sections details{border-bottom:1px solid var(--rule-2);padding:12px 0}
+.sections details:last-child{border-bottom:0}
+.sections summary{font-family:var(--serif);font-size:18px;font-weight:700;list-style-position:outside}
+.sections details p{margin-top:10px;max-width:68ch}
+.plain{margin:0;padding:18px 20px 18px 38px;gap:8px}
+.plain li{max-width:68ch}
+.sides{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.side p{max-width:60ch}
+.side .src{font-size:13px;white-space:nowrap}
+@media (max-width:720px){.sides{grid-template-columns:1fr}}
+.path{margin:0;padding:8px 20px;list-style:none;gap:0}
+.path li{display:grid;grid-template-columns:110px 1fr;gap:12px;padding:10px 0;border-bottom:1px solid var(--rule-2);font-size:15px}
+.path li:last-child{border-bottom:0}
+@media (max-width:520px){.path li{grid-template-columns:1fr;gap:2px}}
+details.more{border-top:1px solid var(--rule-2)}
+details.more>summary{padding:10px 0;color:var(--navy)}
+.docket details.more{list-style:none}
