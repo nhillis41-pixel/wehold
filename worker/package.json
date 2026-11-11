@@ -1,0 +1,6 @@
+{
+  "name": "wehold-push",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --experimental-sqlite --no-warnings test/test.mjs" }
+}

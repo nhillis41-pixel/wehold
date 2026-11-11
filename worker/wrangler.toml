@@ -1,0 +1,28 @@
+# WeHold alert service. Deployed by .github/workflows/push-service.yml once Cloudflare keys are saved.
+name = "wehold-push"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+
+# The service answers at push.weholdllc.com (weholdllc.com is already on Cloudflare).
+routes = [{ pattern = "push.weholdllc.com", custom_domain = true }]
+
+[vars]
+DATA_BASE = "https://app.weholdllc.com/"
+APNS_BUNDLE_ID = "com.weholdllc.wehold"
+APNS_ENV = "production"            # "sandbox" for builds run straight from Xcode; TestFlight and App Store use production
+BRIEFING_CRON = "0 14 * * SUN"     # Sunday 8am Central in winter, 9am in summer
+ALLOWED_ORIGINS = "capacitor://localhost,https://localhost,ionic://localhost"
+
+[triggers]
+crons = ["23 * * * *", "0 14 * * SUN"]
+
+# Filled in by the deploy workflow (database_id comes from `wrangler d1 create wehold-push`).
+[[d1_databases]]
+binding = "DB"
+database_name = "wehold-push"
+database_id = "REPLACE_WITH_D1_ID"
+
+# Secrets (set with `wrangler secret put`, never in this file):
+#   APNS_KEY, APNS_KEY_ID, APNS_TEAM_ID   Apple push key (.p8) from developer.apple.com > Keys
+#   FCM_SERVICE_ACCOUNT                   Firebase service-account JSON for Android delivery
+#   ADMIN_KEY                             optional; enables POST /run for manual test sends
