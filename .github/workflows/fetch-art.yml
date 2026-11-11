@@ -1,0 +1,40 @@
+name: Fetch artwork
+
+# Downloads generated artwork (Higgsfield) into art/ so it can be reviewed and placed in site/img.
+# Only accepts files from Higgsfield's image host.
+
+on:
+  workflow_dispatch:
+    inputs:
+      files:
+        description: "Space-separated name=url pairs, e.g. money1=https://d8j0ntlcm91z4.cloudfront.net/.../x.png"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download
+        env:
+          FILES: ${{ inputs.files }}
+        run: |
+          mkdir -p art
+          for pair in $FILES; do
+            name="${pair%%=*}"; url="${pair#*=}"
+            case "$url" in https://d8j0ntlcm91z4.cloudfront.net/*) ;; *) echo "Refusing $url"; exit 1;; esac
+            [[ "$name" =~ ^[a-z0-9-]+$ ]] || { echo "Bad name $name"; exit 1; }
+            curl -fsSL "$url" -o "art/$name.png"
+            file "art/$name.png" | grep -q PNG || { echo "$name is not a PNG"; exit 1; }
+          done
+          ls -la art
+      - name: Save
+        run: |
+          git config user.name "wehold-bot"; git config user.email "wehold-bot@users.noreply.github.com"
+          git add art
+          git diff --cached --quiet && exit 0
+          git commit -m "Add artwork drafts"
+          for i in 1 2 3 4 5; do git pull --rebase origin main && git push origin HEAD:main && exit 0; sleep 5; done; exit 1
