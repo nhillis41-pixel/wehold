@@ -18,6 +18,15 @@
   const platform = Cap.getPlatform(); // "ios" | "android"
   const plugin = (name) => (Cap.Plugins && Cap.Plugins[name]) || (Cap.registerPlugin ? Cap.registerPlugin(name) : null);
   const Push = plugin("PushNotifications"), Purchases = plugin("Purchases"), Share = plugin("Share"), Files = plugin("Filesystem");
+  const App = plugin("App");
+
+  // Android Back button: go back a page; on the home page, close the app.
+  if (App && platform === "android") {
+    App.addListener("backButton", () => {
+      const home = !location.hash || location.hash === "#/" || location.hash === "#";
+      if (home) App.exitApp(); else history.back();
+    });
+  }
 
   const KEY = "wehold-native";
   const load = () => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch (e) { return {}; } };
