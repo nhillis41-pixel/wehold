@@ -211,9 +211,13 @@ def build_member(api, m, ids, cycle, cache):
             sizes[0] = round(sizes[0] + totals["indUnitemized"], 2)
         if ind > 0 and abs(sum(sizes.values()) - ind) <= 0.1 * ind + 1000:
             out["sizes"] = [{"label": SIZE_LABEL[k], "total": v} for k, v in sizes.items()]
+        else:
+            print(f"  {m['id']}: gift sizes left out (sizes add to {sum(sizes.values()):,.0f}; individual gifts {ind:,.0f}; raw {[(r.get('size'), r.get('total')) for r in sz]})")
         st = api.get("schedules/schedule_a/by_state/", committee_id=com, cycle=cycle, per_page=100).get("results") or []
         home = sum(num(r.get("total")) for r in st if r.get("state") == m["state"])
         allst = sum(num(r.get("total")) for r in st)
+        if not (allst > 0 and allst <= totals["indItemized"] * 1.1 + 1000):
+            print(f"  {m['id']}: states left out (states add to {allst:,.0f}; itemized gifts {totals['indItemized']:,.0f})")
         if allst > 0 and allst <= totals["indItemized"] * 1.1 + 1000:
             out["states"] = {"home": round(home, 2), "total": round(allst, 2),
                              "top": [{"state": r.get("state"), "total": num(r.get("total"))} for r in sorted(st, key=lambda r: -num(r.get("total")))[:5] if r.get("state")]}
