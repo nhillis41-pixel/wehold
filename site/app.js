@@ -146,10 +146,10 @@
         <span class="mono" aria-hidden="true">${esc(initials(m))}</span>
         <div class="stack" style="gap:2px;min-width:0;flex:1">
           <a class="mtitle" href="#/member/${esc(m.id)}">${honor(m)} ${esc(m.name)}</a>
-          <span class="muted" style="font-size:14px">${esc(seatLine(m))}</span>
+          <span class="muted" style="font-size:14px">${esc(seatLine(m))} · ${esc(PARTY[m.party] || m.party)}</span>
         </div>
       </div>
-      <div class="row" style="gap:6px"><span class="party">${esc(PARTY[m.party] || m.party)}</span>${upForElection(m) ? `<span class="pill">Up for election ${fmtDate(D.meta.electionDay)}</span>` : ""}${a && a.speaker ? `<span class="pill">Speaker · votes rarely by tradition</span>` : ""}</div>
+      ${upForElection(m) || (a && a.speaker) ? `<div class="row" style="gap:6px">${upForElection(m) ? `<span class="pill">Up for election ${fmtDate(D.meta.electionDay)}</span>` : ""}${a && a.speaker ? `<span class="pill">Speaker, votes rarely by tradition</span>` : ""}</div>` : ""}
       <div class="facts">${matchFact}${attFact}</div>
       <div class="actions"><a class="btn small" href="#/member/${esc(m.id)}">See the record</a><a class="btn small ghost" href="#/write/${esc(m.id)}">Write a letter</a></div>
     </article>`;
@@ -160,7 +160,7 @@
     return `<article class="vote">
       <div class="slip"><span class="ch">${esc(v.ch)}</span><span>Roll ${esc(v.roll)} · ${fmtDate(v.date)}</span><span class="tally">${esc(v.tally)}</span><span>${num(v.nv)} not voting</span><span class="v ${v.pass ? "Yea" : "Nay"}" style="align-self:flex-start">${esc(v.result)}</span></div>
       <div class="body">
-        <div class="row">${you ? `<span class="pill" style="background:var(--ink);color:var(--parchment)">${esc(u.label)}</span>` : ""}${v.proc ? `<span class="pill proc">Procedural step</span>` : ""}${(v.tags || []).map((t) => `<span class="pill">${esc(t)}</span>`).join("")}</div>
+        <div class="row">${you ? `<span class="pill" style="background:var(--ink);color:var(--parchment)">${esc(u.label)}</span>` : ""}${v.proc ? `<span class="pill proc">Procedural step</span>` : ""}${(v.tags || []).length ? `<span class="muted" style="font-size:13px">${v.tags.map(esc).join(", ")}</span>` : ""}</div>
         <h3><a href="#/vote/${esc(v.id)}" style="color:inherit;text-decoration:none">${esc(v.title)}</a></h3>
         <p class="muted" style="font-size:14px">${esc(v.q)}</p>
         <p>${esc(v.sum)}</p>
@@ -170,6 +170,21 @@
         <div class="links"><a href="${esc(v.rec)}" target="_blank" rel="noopener">Official roll call</a>${v.bill ? `<a href="${esc(v.bill.url)}" target="_blank" rel="noopener">${esc(v.bill.label)} on Congress.gov</a>` : ""}<a href="#/vote/${esc(v.id)}">Tell your officials where you stand</a></div>
       </div></article>`;
   }
+
+  // Compact docket row: what happened and how your officials voted. The full summary is one tap away.
+  const firstSentence = (t) => { t = String(t || ""); const m = t.match(/^.{40,}?[.!?](?=\s|$)/); return (m ? m[0] : t).trim(); };
+  function voteRow(v, opts = {}) {
+    const people = opts.people || delegation().filter((m) => v.pos[m.id]);
+    const u = userStance(v);
+    return `<li class="vrow"><a class="vlink" href="#/vote/${esc(v.id)}">
+        <span class="vmeta">${esc(v.ch)}, ${fmtDate(v.date)}${v.proc ? `<span class="pill proc">Procedural step</span>` : ""}</span>
+        <span class="vtitle">${esc(v.title)}</span>
+        <span class="vsum">${esc(firstSentence(v.sum))}</span></a>
+      <div class="vfoot"><span class="vres ${v.pass ? "pass" : "fail"}">${esc(v.result)}${v.tally ? `, ${esc(v.tally)}` : ""}</span>${people.map((m) => { const c = u ? compare(m, v) : null; return `<span class="pos">${esc(m.last)} ${vpill(v.pos[m.id])}${c && c.kind === "agree" ? `<span class="match ok">✓ matches you</span>` : c && c.kind === "diff" ? `<span class="match no">✕ differs</span>` : ""}</span>`; }).join("")}</div></li>`;
+  }
+  const docket = (list, opts) => `<ul class="docket">${list.map((v) => voteRow(v, opts)).join("")}</ul>`;
+  // A quiet engraved illustration beside a page title.
+  const withArt = (img, inner) => `<header class="pagehead art-head"><div class="stack" style="gap:8px">${inner}</div><img class="head-art" src="img/${img}.jpg" alt="" width="1000" height="750"></header>`;
 
   // ---------- location lookup ----------
   function setLocation(st, d, zip) {
@@ -310,22 +325,24 @@
     const onBallot = del.filter(upForElection).length;
     const recent = D.votes.slice(0, 3);
     const resultsOn = ed && today >= ed && today <= ed.slice(0, 4) + "-12-31";
+    const tools = [];
+    if (plusOn("alerts")) { const n = newAlertCount(); tools.push({ href: "#/alerts", img: "alerts", name: "Alerts", line: n ? `${n} new` : followed().length ? "Topics you follow" : "Pick topics to follow", hot: n > 0 }); }
+    if (plusOn("reportCard") && del.length) tools.push({ href: "#/report", img: "report", name: "Report card", line: "How they line up with you" });
+    if (plusOn("money")) tools.push({ href: "#/money", img: "money", name: "Follow the money", line: "Where campaign money comes from" });
+    const extras = [days != null ? `<a href="#/where">Where and when to vote</a>` : "", resultsOn ? `<a href="#/results">Election results</a>` : ""].filter(Boolean);
     main.innerHTML = `
-      <header class="pagehead">
-        <div class="sechead" style="align-items:flex-end"><span class="label muted">${esc(placeName(S.state, S.district))}</span><button class="linkbtn" id="changeLoc" style="font-size:14px">Change location</button></div>
-        <div class="sechead" style="align-items:flex-end"><h1>Your Delegation</h1><span class="quote">They work for you.</span></div>
-      </header>
-      ${days != null ? `<div class="band">
-        <div class="count">${days}<small>${days === 1 ? "day" : "days"}</small></div>
-        <div class="stack" style="gap:2px"><span class="k">Your next verdict</span><strong style="font-size:18px">Election Day · ${fmtDate(ed)}${days === 0 ? " · today" : ""}</strong><span style="opacity:.85;font-size:14px">${onBallot ? `${onBallot} of your ${del.length} officials' seats are on the ballot.` : "None of your officials' seats are up this time."}</span></div>
-      </div>` : ""}
-      ${plusOn("alerts") ? (() => { const n = newAlertCount(); return `<a class="card linkcard" href="#/alerts"><span class="stack" style="gap:2px"><strong style="font-size:17px">Alerts <span class="pill new">Plus</span>${n ? ` <span class="pill">${n} new</span>` : ""}</strong><span class="muted" style="font-size:14px">${followed().length ? `Topics you follow, your officials' votes and a weekly briefing` : `Choose topics to follow and get a weekly briefing`}</span></span><span class="go" aria-hidden="true">→</span></a>`; })() : ""}
-      ${plusOn("reportCard") && delegation().length ? `<a class="card linkcard" href="#/report"><span class="stack" style="gap:2px"><strong style="font-size:17px">Your report card <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">How your officials line up with your answers, topic by topic</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
-      ${days != null ? `<a class="card linkcard" href="#/where"><span class="thumb plate"><img src="img/ballot.jpg" alt="" width="1000" height="753"></span><span class="stack" style="gap:2px"><strong style="font-size:17px">Where and when to vote</strong><span class="muted" style="font-size:14px">Your polling place, hours and early voting, from election officials.</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
-      ${resultsOn ? `<a class="card linkcard" href="#/results"><span class="stack" style="gap:2px"><strong style="font-size:17px">Election results</strong><span class="muted" style="font-size:14px">Official, from your state's election office</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
-      ${NO_SENATORS.has(S.state) ? `<p class="notice">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
-      <div class="grid">${del.map(memberCard).join("") || `<p class="muted">We couldn't find officials for this location.</p>`}</div>
-      ${recent.length ? `<section><div class="sechead"><h2>Recently on the docket</h2><a href="#/votes">All votes →</a></div>${recent.map((v) => voteCard(v)).join("")}</section>` : ""}`;
+      <section class="chamber" aria-labelledby="delh">
+        <div class="chamber-head">
+          <div class="stack" style="gap:4px"><span class="place">${esc(placeName(S.state, S.district))}</span><h1 id="delh">Your Delegation</h1><p class="motto">They work for you.</p></div>
+          <button class="linkbtn" id="changeLoc">Change location</button>
+        </div>
+        ${days != null ? `<p class="countdown"><strong>${days === 0 ? "Today" : days}</strong> ${days === 0 ? "is Election Day" : `${days === 1 ? "day" : "days"} to Election Day, ${fmtDate(ed)}`}. ${onBallot ? `${onBallot} of your ${del.length} officials' seats are on the ballot.` : "None of your officials' seats are up this time."}</p>` : ""}
+        ${NO_SENATORS.has(S.state) ? `<p class="countdown">${esc(STATES[S.state])} is represented in the House by a delegate, who can vote in committees but not on final passage of bills, and has no senators.</p>` : ""}
+        <div class="seats">${del.map(memberCard).join("") || `<p>We couldn't find officials for this location.</p>`}</div>
+      </section>
+      ${tools.length ? `<section class="tools" aria-label="WeHold Plus"><div class="sechead"><h2>Go deeper</h2><span class="pill new">Plus</span></div><div class="tool-grid">${tools.map((x) => `<a class="tool" href="${x.href}"><img src="img/${x.img}.jpg" alt="" width="1000" height="750" loading="lazy"><span class="tool-text"><span class="tool-name">${esc(x.name)}</span><span class="tool-line${x.hot ? " hot" : ""}">${esc(x.line)}</span></span></a>`).join("")}</div></section>` : ""}
+      ${extras.length ? `<p class="quicklinks">${extras.join("")}</p>` : ""}
+      ${recent.length ? `<section><div class="sechead"><h2>Recently on the docket</h2><a href="#/votes">All votes</a></div>${docket(recent)}</section>` : ""}`;
     document.getElementById("changeLoc").onclick = () => { delete S.state; delete S.district; save(); render(); };
   }
 
@@ -369,14 +386,14 @@
       ${plusOn("reportCard") ? `<a class="card linkcard" href="#/report/${esc(m.id)}"><span class="stack" style="gap:2px"><strong style="font-size:17px">Report card <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">How ${esc(m.last)} lines up with you, topic by topic and over time</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       <section class="stack">
         <h2>Key votes</h2>
-        ${key.length ? key.map((v) => voteCard(v, { people: [m] })).join("") : `<p class="muted">No highlighted votes for this official yet.</p>`}
+        ${key.length ? docket(key, { people: [m] }) : `<p class="muted">No highlighted votes for this official yet.</p>`}
       </section>`;
     if (a && a.missedRolls.length) {
       const rolls = await loadRolls();
       const box = document.getElementById("missed"); if (!box) return;
       const show = (all) => {
-        const ids = all ? a.missedRolls : a.missedRolls.slice(0, 10);
-        box.innerHTML = `<p class="label" style="margin-top:6px">Missed votes${all ? "" : " (most recent)"}</p><ul class="list">${ids.map((rid) => { const r = rolls[rid] || []; return `<li><span><strong>${esc(r[3] || r[2] || rid)}</strong><br><span class="muted" style="font-size:13px">${fmtDate(r[1])} · ${esc(r[2] || "")} · ${esc(r[4] || "")}</span></span><a href="${esc(r[5] || "#")}" target="_blank" rel="noopener" style="font-size:13px">Record</a></li>`; }).join("")}</ul>${!all && a.missedRolls.length > 10 ? `<button class="linkbtn" id="allMissed">Show all ${num(a.missedRolls.length)}</button>` : ""}`;
+        const ids = all ? a.missedRolls : a.missedRolls.slice(0, 5);
+        box.innerHTML = `<p class="label" style="margin-top:6px">Missed votes${all ? "" : " (most recent)"}</p><ul class="list">${ids.map((rid) => { const r = rolls[rid] || []; return `<li><span><strong>${esc(r[3] || r[2] || rid)}</strong><br><span class="muted" style="font-size:13px">${fmtDate(r[1])} · ${esc(r[2] || "")} · ${esc(r[4] || "")}</span></span><a href="${esc(r[5] || "#")}" target="_blank" rel="noopener" style="font-size:13px">Record</a></li>`; }).join("")}</ul>${!all && a.missedRolls.length > 5 ? `<button class="linkbtn" id="allMissed">Show all ${num(a.missedRolls.length)}</button>` : ""}`;
         const b = document.getElementById("allMissed"); if (b) b.onclick = () => show(true);
       };
       show(false);
@@ -409,7 +426,7 @@
       body = `<p class="muted" style="font-size:14px">Every recorded vote, newest first, checked against official records every hour.${D.meta.updated ? " Last checked " + new Date(D.meta.updated).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) + "." : ""}${ch !== "House" && D.meta.unavailable && D.meta.unavailable.Senate ? " Senate roll calls will appear here once access to Senate records is approved." : ""}</p>` + (recent.map(latestCard).join("") || `<p class="muted">No recent votes on file yet.</p>`);
     } else {
       const list = D.votes.filter((v) => ch === "all" || v.ch === ch);
-      body = `${D.meta.unavailable && D.meta.unavailable.Senate ? `<p class="notice">Senate key votes are copied by hand from the official Senate records and checked against the official totals. The Senate's website doesn't currently allow automated downloads, so Senate attendance isn't available yet while we request access. House votes and attendance are complete.</p>` : ""}` + (list.map((v) => voteCard(v)).join("") || `<p class="muted">No votes yet.</p>`);
+      body = `${D.meta.unavailable && D.meta.unavailable.Senate ? `<p class="notice">Senate key votes are copied by hand from the official Senate records and checked against the official totals. The Senate's website doesn't currently allow automated downloads, so Senate attendance isn't available yet while we request access. House votes and attendance are complete.</p>` : ""}` + (list.length ? docket(list) : `<p class="muted">No votes yet.</p>`);
     }
     main.innerHTML = `
       <header class="pagehead"><span class="eyebrow">The record</span><h1>The Docket</h1><p class="lede">Key votes in plain English, plus every roll call as it happens. Each links to the official record.</p></header>
@@ -818,8 +835,8 @@
   async function viewAlerts() {
     if (!plusOn("alerts")) return plusLockedFor("Smart alerts", "Alerts when a bill on a topic you follow comes up for a vote, when your officials vote differently from your answers or miss a vote, and a weekly briefing.");
     const list = alertsList(), F = followed();
-    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus · Smart alerts</span><h1>Alerts</h1>
-      <p class="lede">Built on this device from the official record, your answers and the topics you follow. WeHold never learns which side you're on.</p></header>
+    main.innerHTML = withArt("alerts", `<span class="eyebrow">WeHold Plus</span><h1>Alerts</h1>
+      <p class="lede">Built on this device from the official record, your answers and the topics you follow. WeHold never learns which side you're on.</p>`) + `
       <p class="row noprint"><a class="btn small ghost" href="#/topics">My topics${F.length ? ` (${F.length})` : ""}</a></p>
       ${!F.length ? `<p class="card">You're not following any topics yet. <a href="#/topics">Choose topics</a>, or keep reading and WeHold will ask before following one.</p>` : ""}
       ${!S.state ? `<p class="card"><a href="#/">Add your ZIP code</a> to get alerts about your own officials.</p>` : ""}
@@ -876,8 +893,8 @@
   async function viewMoneyHome() {
     if (!plusOn("money")) return plusLockedFor("Follow the money", "Campaign donations reported to the FEC, PACs by type and topic, and money next to related votes. Facts only.");
     const del = delegation();
-    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus · Follow the money</span><h1>Your officials' campaign money</h1>
-      <p class="lede">What each campaign reported to the Federal Election Commission this election cycle. Facts only: a contribution doesn't show why anyone voted a certain way.</p></header>
+    main.innerHTML = withArt("money", `<span class="eyebrow">WeHold Plus</span><h1>Follow the money</h1>
+      <p class="lede">What each campaign reported to the Federal Election Commission this election cycle. Facts only: a contribution doesn't show why anyone voted a certain way.</p>`) + `
       ${del.length ? `<div class="stack" id="moneyList">${del.map((m) => `<a class="card linkcard" href="#/money/${esc(m.id)}"><span class="stack" style="gap:2px"><strong style="font-size:17px">${honor(m)} ${esc(m.name)}</strong><span class="muted" style="font-size:14px" data-mh="${esc(m.id)}">Loading…</span></span><span class="go" aria-hidden="true">→</span></a>`).join("")}</div>` : `<p class="card"><a href="#/">Add your ZIP code</a> to see your own officials.</p>`}`;
     for (const m of del) { const mo = await loadMoney(m.id); const el = main.querySelector(`[data-mh="${m.id}"]`); if (el) el.innerHTML = moneyHeadline(m, mo); }
   }
@@ -887,13 +904,14 @@
     if (!m) { main.innerHTML = `<p>We couldn't find that official. <a href="#/money">Back</a></p>`; return; }
     main.innerHTML = `<a href="#/member/${esc(m.id)}">‹ ${esc(m.last)}'s record</a><p class="muted">Loading campaign finance data…</p>`;
     const [mo, map] = [await loadMoney(m.id), pacTopicMap(await loadPacTopics())];
-    const head = `<a href="#/member/${esc(m.id)}">‹ ${esc(m.last)}'s record</a><header class="pagehead"><span class="eyebrow">WeHold Plus · Follow the money</span><h1>${honor(m)} ${esc(m.name)}</h1>`;
-    if (!mo || mo.none) { main.innerHTML = head + `<p class="lede">${moneyHeadline(m, mo)}</p></header>`; return; }
+    const head = `<a href="#/member/${esc(m.id)}">‹ ${esc(m.last)}'s record</a><header class="pagehead art-head"><div class="stack" style="gap:8px"><span class="eyebrow">Follow the money</span><h1>${honor(m)} ${esc(m.name)}</h1>`;
+    const headEnd = `</div><img class="head-art" src="img/money.jpg" alt="" width="1000" height="750"></header>`;
+    if (!mo || mo.none) { main.innerHTML = head + `<p class="lede">${moneyHeadline(m, mo)}</p>` + headEnd; return; }
     const t = mo.totals, ind = t.indItemized + t.indUnitemized, pt = pacByTopic(mo, map), P = mo.pacs || { list: [], byKind: {}, total: 0 };
     const kinds = Object.entries(P.byKind || {}).reduce((acc, [k, v]) => { const n = KINDS[k] || KINDS.other; acc[n] = (acc[n] || 0) + v; return acc; }, {});
     const fecUrl = `https://www.fec.gov/data/candidate/${encodeURIComponent(mo.fec)}/?cycle=${mo.cycle}`;
-    main.innerHTML = head + `<p class="lede">What ${esc(m.last)}'s campaign${mo.committeeName ? ` (${esc(mo.committeeName)})` : ""} reported to the FEC for the ${cycleLabel(mo.cycle)} cycle${mo.through ? `, through ${fmtDate(mo.through)}` : ""}.</p></header>
-      <div class="stats">
+    main.innerHTML = head + `<p class="lede">What ${esc(m.last)}'s campaign${mo.committeeName ? ` (${esc(mo.committeeName)})` : ""} reported to the FEC for the ${cycleLabel(mo.cycle)} cycle${mo.through ? `, through ${fmtDate(mo.through)}` : ""}.</p>${headEnd}
+      <div class="stats stats-3">
         <div class="stat"><span class="big">${usd(t.raised)}</span><span class="muted">raised</span></div>
         <div class="stat"><span class="big">${usd(t.spent)}</span><span class="muted">spent</span></div>
         <div class="stat"><span class="big">${usd(t.cash)}</span><span class="muted">cash on hand</span></div>
@@ -1053,8 +1071,8 @@
     if (!plusOn("reportCard")) return plusLocked();
     const people = id ? [D.byId[id]].filter(Boolean) : delegation();
     const reports = people.map(reportFor);
-    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus · Report card</span><h1>${id && people[0] ? `${honor(people[0])} ${esc(people[0].last)}` : "Your officials"}</h1>
-      <p class="lede">How each official's votes line up with your own answers, topic by topic and over time. Only votes on questions you've answered count. Nothing here leaves your device.</p></header>
+    main.innerHTML = withArt("report", `<span class="eyebrow">WeHold Plus</span><h1>Report card${id && people[0] ? `: ${honor(people[0])} ${esc(people[0].last)}` : ""}</h1>
+      <p class="lede">How each official's votes line up with your own answers, topic by topic and over time. Only votes on questions you've answered count. Nothing here leaves your device.</p>`) + `
       ${!answeredCount() ? `<p class="card">Answer a few questions in <a href="#/charter">My Charter</a> first. The report card compares officials' votes with your answers.</p>` : ""}
       ${!people.length ? `<p class="card"><a href="#/">Add your ZIP code</a> to see your own officials, or compare any two officials below.</p>` : reports.map(reportCardHtml).join("")}
       <section class="card stack noprint"><h2>Compare two officials</h2><p class="muted">Pick any two members of Congress to see how each lines up with your answers, side by side.</p>

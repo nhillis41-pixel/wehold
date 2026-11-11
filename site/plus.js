@@ -25,6 +25,7 @@
 
   // Features that are built and can be opened from the Plus page.
   const LINKS = { reportCard: "#/report", alerts: "#/alerts", money: "#/money" };
+  const ART = { reportCard: "report", alerts: "alerts", money: "money" };
 
   // ---------- testers: label -> SHA-256 of the invite code (uppercase, no spaces) ----------
   // Never put the codes themselves here; this file is public.
@@ -146,7 +147,7 @@
         const f = FEATURES[k];
         const status = f.public ? "Live for everyone" : f.beta ? "In testing" : "Not started";
         const link = LINKS[k] ? `<p><a class="btn small" href="${LINKS[k]}">Open ${esc(f.name.toLowerCase())}</a></p>` : "";
-        return `<section class="card"><span class="pill${f.beta && !f.public ? " new" : ""}">${esc(status)}</span><h3>${esc(f.name)}</h3><p>${esc(f.blurb)}</p>${link}</section>`;
+        return `<section class="card plus-card">${ART[k] ? `<img src="img/${ART[k]}.jpg" alt="" width="1000" height="750" loading="lazy">` : ""}<span class="pill${f.beta && !f.public ? " new" : ""}">${esc(status)}</span><h3>${esc(f.name)}</h3><p>${esc(f.blurb)}</p>${link}</section>`;
       }).join("");
       main.innerHTML = `
         <header class="pagehead"><span class="eyebrow">WeHold Plus · Testing</span><h1>Thanks for testing.</h1>
