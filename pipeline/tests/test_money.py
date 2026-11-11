@@ -46,7 +46,7 @@ ROUTES = [
     ("schedules/schedule_a/by_size/by_candidate/", lambda q: {"results": [{"size": 0, "total": 100000}, {"size": 200, "total": 200000}, {"size": 2000, "total": 900000}]}),
     ("schedules/schedule_a/by_state/by_candidate/", lambda q: {"results": [{"state": "TN", "total": 700000}, {"state": "TX", "total": 300000}, {"state": "NY", "total": 200000}]}),
     ("schedules/schedule_a/by_employer/", lambda q: {"results": [{"employer": "RETIRED", "total": 99999, "count": 500}, {"employer": "ACME ENERGY", "total": 50000, "count": 20},
-                                                                  {"employer": "Self-Employed", "total": 40000, "count": 30}, {"employer": "STATE OF TENNESSEE", "total": 20000, "count": 12}]}),
+                                                                  {"employer": "Self-Employed", "total": 40000, "count": 30}, {"employer": "STATE OF TENNESSEE", "total": 20000, "count": 12}, {"employer": "NULL", "total": 9000, "count": 3}, {"employer": "INFORMATION REQUESTED PER BEST EFFORTS", "total": 8000, "count": 9}]}),
     ("schedules/schedule_a/", pac_page),
     ("committees/", lambda q: {"results": [{"committee_id": "C00000001", "name": "ACME ENERGY PAC", "committee_type": "Q", "designation": "B", "organization_type": "C"},
                                           {"committee_id": "C00000002", "name": "WORKERS UNION PAC", "committee_type": "Q", "designation": "U", "organization_type": "L"},
@@ -78,6 +78,8 @@ def test_member_record():
     q = [qq for p, qq in calls if p == "schedules/schedule_a/"][0]
     assert q["line_number"] == ["F3-11C"], "PAC contributions only (line 11C), not transfers"
     assert all("api_key" in qq for _, qq in calls)
+    bc = [qq for p, qq in calls if p.endswith("/by_candidate/")]
+    assert bc and all(qq.get("election_full") == ["false"] for qq in bc), "two-year cycle, not the senator's whole term"
     assert len(cache) == 3
     # No individual donor names anywhere in what we publish.
     assert "contributor_name" not in json.dumps(rec)

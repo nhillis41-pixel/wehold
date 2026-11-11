@@ -121,7 +121,7 @@ def principal_committee(api, cid, cycle):
 
 
 SIZE_LABEL = {0: "Under $200", 200: "$200–$499", 500: "$500–$999", 1000: "$1,000–$1,999", 2000: "$2,000 and up"}
-JUNK_EMPLOYERS = {"", "NONE", "N/A", "NA", "RETIRED", "SELF-EMPLOYED", "SELF EMPLOYED", "SELF", "NOT EMPLOYED", "UNEMPLOYED",
+JUNK_EMPLOYERS = {"", "NONE", "NULL", "DISABLED", "N.A", "NOT EMPLOYED/RETIRED", "RETIRED/NOT EMPLOYED", "INFO REQUESTED", "BEST EFFORTS", "N/A", "NA", "RETIRED", "SELF-EMPLOYED", "SELF EMPLOYED", "SELF", "NOT EMPLOYED", "UNEMPLOYED",
                   "INFORMATION REQUESTED", "INFORMATION REQUESTED PER BEST EFFORTS", "REQUESTED", "HOMEMAKER", "STUDENT", "NOT APPLICABLE"}
 
 
@@ -195,7 +195,7 @@ def build_member(api, m, ids, cycle, cache):
     out = {"id": m["id"], "fec": cid, "committee": com, "committeeName": com_name, "cycle": cycle,
            "from": t.get("coverage_start_date", "")[:10] or None, "through": (t.get("coverage_end_date") or "")[:10] or None, "totals": totals}
 
-    sz = api.get("schedules/schedule_a/by_size/by_candidate/", candidate_id=cid, cycle=cycle, per_page=20).get("results") or []
+    sz = api.get("schedules/schedule_a/by_size/by_candidate/", candidate_id=cid, cycle=cycle, election_full="false", per_page=20).get("results") or []
     sizes = {k: 0.0 for k in SIZE_LABEL}
     for r in sz:
         s = int(r.get("size") or 0)
@@ -204,7 +204,7 @@ def build_member(api, m, ids, cycle, cache):
     sizes[0] = round(sizes[0] + totals["indUnitemized"], 2)  # unitemized gifts are all under $200
     out["sizes"] = [{"label": SIZE_LABEL[k], "total": v} for k, v in sizes.items()]
 
-    st = api.get("schedules/schedule_a/by_state/by_candidate/", candidate_id=cid, cycle=cycle, per_page=100).get("results") or []
+    st = api.get("schedules/schedule_a/by_state/by_candidate/", candidate_id=cid, cycle=cycle, election_full="false", per_page=100).get("results") or []
     home = sum(num(r.get("total")) for r in st if r.get("state") == m["state"])
     allst = sum(num(r.get("total")) for r in st)
     out["states"] = {"home": round(home, 2), "total": round(allst, 2),
@@ -212,7 +212,10 @@ def build_member(api, m, ids, cycle, cache):
 
     if com:
         emp = api.get("schedules/schedule_a/by_employer/", committee_id=com, cycle=cycle, sort="-total", per_page=40).get("results") or []
-        emp = [r for r in emp if (r.get("employer") or "").strip().upper().rstrip(".") not in JUNK_EMPLOYERS]
+        def real(e):
+            e = (e or "").strip().upper().rstrip(".")
+            return e not in JUNK_EMPLOYERS and not any(w in e for w in ("REQUESTED", "RETIRED", "NOT EMPLOYED", "SELF EMPLOYED", "SELF-EMPLOYED"))
+        emp = [r for r in emp if real(r.get("employer"))]
         out["employers"] = [{"name": r.get("employer"), "total": num(r.get("total")), "n": int(r.get("count") or 0)} for r in emp[:10]]
         pacs, truncated = pac_contributions(api, com, cycle)
         committee_kinds(api, [p["id"] for p in pacs], cache)
