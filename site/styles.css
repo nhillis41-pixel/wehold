@@ -289,3 +289,10 @@ footer a{color:var(--muted)}
 details.more{border-top:1px solid var(--rule-2)}
 details.more>summary{padding:10px 0;color:var(--navy)}
 .docket details.more{list-style:none}
+
+/* tester code box */
+.sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.tester-box{border:1px dashed var(--rule);border-radius:6px;padding:10px 14px;max-width:480px}
+.tester-box summary{cursor:pointer;font-weight:600}
+.tester-box[open]{display:flex;flex-direction:column;gap:10px}
+.tester-box[open] summary{margin-bottom:2px}

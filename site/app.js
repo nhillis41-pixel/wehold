@@ -260,6 +260,32 @@
     };
   }
 
+  // ---------- tester code box (welcome + home) ----------
+  // Shown only until this device has Plus. The code is saved on the device, so it's entered once.
+  function testerBox() {
+    const P = window.WeHoldPlus;
+    if (!P || P.tester || P.subscriber) return "";
+    return `<details class="tester-box">
+        <summary>Invited to test WeHold Plus? Enter your code</summary>
+        <form id="testerForm" class="zipbox">
+          <label class="sr" for="testerCode">Tester code</label>
+          <input id="testerCode" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Tester code" required>
+          <button class="btn" type="submit" style="white-space:nowrap">Turn on testing</button>
+        </form>
+        <p class="muted" style="font-size:13px;margin:0">This device remembers your code. In a private browsing window it's forgotten when you close the tab.</p>
+      </details>`;
+  }
+  function wireTesterBox() {
+    const f = document.getElementById("testerForm");
+    if (!f) return;
+    f.onsubmit = async (e) => {
+      e.preventDefault();
+      const t = await window.WeHoldPlus.redeem(f.testerCode.value);
+      toast(t ? "WeHold Plus testing is on for this device." : "That code didn't work. Check it and try again.");
+      if (t) render();
+    };
+  }
+
   // ---------- views ----------
   function viewWelcome() {
     main.innerHTML = `
@@ -275,6 +301,7 @@
             <p id="zipMsg" role="status" class="muted"></p>
           </form>
           <p class="muted" style="font-size:13px">Independent and nonpartisan. Every vote comes from official House and Senate records.</p>
+          ${testerBox()}
         </div>
       </section>
       <div id="zipNext" class="stack"></div>
@@ -293,6 +320,7 @@
         <p class="quote">“We the People of the United States, in Order to form a more perfect Union…”</p>
         <span class="label muted">Preamble to the Constitution, 1787</span>
       </section>`;
+    wireTesterBox();
     const f = document.getElementById("zipForm");
     f.onsubmit = async (e) => {
       e.preventDefault();
@@ -343,7 +371,9 @@
       </section>
       ${tools.length ? `<section class="tools" aria-label="WeHold Plus"><div class="sechead"><h2>Go deeper</h2><span class="pill new">Plus</span></div><div class="tool-grid">${tools.map((x) => `<a class="tool" href="${x.href}"><img src="img/${x.img}.jpg" alt="" width="1000" height="750" loading="lazy"><span class="tool-text"><span class="tool-name">${esc(x.name)}</span><span class="tool-line${x.hot ? " hot" : ""}">${esc(x.line)}</span></span></a>`).join("")}</div></section>` : ""}
       ${extras.length ? `<p class="quicklinks">${extras.join("")}</p>` : ""}
-      ${recent.length ? `<section><div class="sechead"><h2>Recently on the docket</h2><a href="#/votes">All votes</a></div>${docket(recent)}</section>` : ""}`;
+      ${recent.length ? `<section><div class="sechead"><h2>Recently on the docket</h2><a href="#/votes">All votes</a></div>${docket(recent)}</section>` : ""}
+      ${testerBox()}`;
+    wireTesterBox();
     document.getElementById("changeLoc").onclick = () => { delete S.state; delete S.district; save(); render(); };
   }
 
