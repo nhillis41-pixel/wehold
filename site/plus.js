@@ -31,10 +31,10 @@
   // Never put the codes themselves here; this file is public.
   const TESTERS = {
     "tester-1": "dc9cd0575ac32d0d232cb444ea8ee8765f926ba50166ccff2195dfe66db578fa",
-    "tester-2": "0bcb0a26ac60df434ab9d89ffe7f7cc3399ce6b55ba10b825a83130a57d213b9",
-    "tester-3": "2c5bfc058916d97251fa5c9a2ad3cd959fe90b19cefeb888a6241451f001073f",
-    "tester-4": "5e9d1a080723c6b0a4f3a771b06f6d0e2e0411d8d741a4bca93a618c9bebf86bf",
-    "tester-5": "8bc6f7adfca3dfb2e806423f3c6538886d62c595283264b06c8d156c3122f445",
+    "tester-2": "6a770a0c0e17d194f482a530b2e0647a6717f94baf19941f280e837a13456bc9",
+    "tester-3": "4c8d53da7ce6c119483cd3db18e1134659de2250c9ff1578d1bbf5ae88701ba2",
+    "tester-4": "a719d310fbf1e2260675a9a39b07783923975d1a0634606b1a7ff4fd6c0f054b",
+    "tester-5": "4314793f04e26b3aa4313eccaa0ddd563f74727068c60bc5ef0e25faad6bbb7c",
   };
 
   // ---------- device state ----------
