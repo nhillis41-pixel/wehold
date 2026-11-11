@@ -1,0 +1,60 @@
+name: Follow the money (FEC)
+
+# Collects campaign finance facts for every member of Congress from the FEC (WeHold Plus).
+# Runs daily; each run refreshes the members whose data is oldest, staying under the FEC's 1,000 requests/hour.
+# Needs the FEC_API_KEY secret. The hourly site update publishes the new files.
+
+on:
+  schedule:
+    - cron: "41 8 * * *"   # 2:41am Central (3:41 in summer)
+  workflow_dispatch:
+    inputs:
+      only:
+        description: "Only these member ids (space-separated bioguide ids), for testing"
+        required: false
+        default: ""
+      budget:
+        description: "Max FEC requests this run"
+        required: false
+        default: "900"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wehold-money
+  cancel-in-progress: false
+
+jobs:
+  money:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r pipeline/requirements.txt
+      - name: Test
+        run: python pipeline/tests/test_money.py
+      - name: Collect from the FEC
+        env:
+          FEC_API_KEY: ${{ secrets.FEC_API_KEY }}
+          FEC_BUDGET: ${{ inputs.budget || '900' }}
+          ONLY: ${{ inputs.only }}
+        run: |
+          if [ -n "$ONLY" ]; then python pipeline/money.py --only $ONLY; else python pipeline/money.py; fi
+      - name: Save
+        run: |
+          git config user.name "wehold-bot"
+          git config user.email "wehold-bot@users.noreply.github.com"
+          git add site/data/money data/fec_committees.json 2>/dev/null || true
+          if git diff --cached --quiet; then echo "Nothing new."; exit 0; fi
+          git commit -m "Update campaign finance data $(date -u +%Y-%m-%d)"
+          for i in 1 2 3 4 5; do
+            git pull --rebase origin main && git push origin HEAD:main && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
