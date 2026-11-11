@@ -195,20 +195,28 @@ def build_member(api, m, ids, cycle, cache):
     out = {"id": m["id"], "fec": cid, "committee": com, "committeeName": com_name, "cycle": cycle,
            "from": t.get("coverage_start_date", "")[:10] or None, "through": (t.get("coverage_end_date") or "")[:10] or None, "totals": totals}
 
-    sz = api.get("schedules/schedule_a/by_size/by_candidate/", candidate_id=cid, cycle=cycle, election_full="false", per_page=20).get("results") or []
-    sizes = {k: 0.0 for k in SIZE_LABEL}
-    for r in sz:
-        s = int(r.get("size") or 0)
-        if s in sizes:
-            sizes[s] = round(sizes[s] + num(r.get("total")), 2)
-    sizes[0] = round(sizes[0] + totals["indUnitemized"], 2)  # unitemized gifts are all under $200
-    out["sizes"] = [{"label": SIZE_LABEL[k], "total": v} for k, v in sizes.items()]
-
-    st = api.get("schedules/schedule_a/by_state/by_candidate/", candidate_id=cid, cycle=cycle, election_full="false", per_page=100).get("results") or []
-    home = sum(num(r.get("total")) for r in st if r.get("state") == m["state"])
-    allst = sum(num(r.get("total")) for r in st)
-    out["states"] = {"home": round(home, 2), "total": round(allst, 2),
-                     "top": [{"state": r.get("state"), "total": num(r.get("total"))} for r in sorted(st, key=lambda r: -num(r.get("total")))[:5] if r.get("state")]}
+    # Gift sizes and donor states from the campaign committee's own two-year totals. They must reconcile with the
+    # FEC's individual-contribution totals; if they don't, the section is left out rather than shown wrong.
+    ind = totals["indItemized"] + totals["indUnitemized"]
+    out["sizes"] = None
+    out["states"] = None
+    if com:
+        sz = api.get("schedules/schedule_a/by_size/", committee_id=com, cycle=cycle, per_page=20).get("results") or []
+        sizes = {k: 0.0 for k in SIZE_LABEL}
+        for r in sz:
+            k = int(r.get("size") or 0)
+            if k in sizes:
+                sizes[k] = round(sizes[k] + num(r.get("total")), 2)
+        if sizes[0] + 1 < totals["indUnitemized"]:  # this summary left out gifts too small to itemize
+            sizes[0] = round(sizes[0] + totals["indUnitemized"], 2)
+        if ind > 0 and abs(sum(sizes.values()) - ind) <= 0.1 * ind + 1000:
+            out["sizes"] = [{"label": SIZE_LABEL[k], "total": v} for k, v in sizes.items()]
+        st = api.get("schedules/schedule_a/by_state/", committee_id=com, cycle=cycle, per_page=100).get("results") or []
+        home = sum(num(r.get("total")) for r in st if r.get("state") == m["state"])
+        allst = sum(num(r.get("total")) for r in st)
+        if allst > 0 and allst <= totals["indItemized"] * 1.1 + 1000:
+            out["states"] = {"home": round(home, 2), "total": round(allst, 2),
+                             "top": [{"state": r.get("state"), "total": num(r.get("total"))} for r in sorted(st, key=lambda r: -num(r.get("total")))[:5] if r.get("state")]}
 
     if com:
         emp = api.get("schedules/schedule_a/by_employer/", committee_id=com, cycle=cycle, sort="-total", per_page=40).get("results") or []

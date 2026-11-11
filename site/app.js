@@ -871,7 +871,7 @@
     if (!mo) return `<span class="muted">Not collected yet. Campaign finance data is gathered from the FEC over the course of a week.</span>`;
     if (mo.none) return `<span class="muted">No FEC campaign reports for the ${cycleLabel(mo.cycle)} cycle.</span>`;
     const t = mo.totals, ind = t.indItemized + t.indUnitemized;
-    return `Raised <strong>${usd(t.raised)}</strong> · ${share(t.pac, t.raised)}% from PACs · ${share(t.indUnitemized, ind)}% of individual money in gifts under $200`;
+    return `Raised <strong>${usd(t.raised)}</strong> · ${share(t.pac, t.raised)}% from PACs · ${share(t.indUnitemized, ind)}% of individual money in small gifts`;
   }
   async function viewMoneyHome() {
     if (!plusOn("money")) return plusLockedFor("Follow the money", "Campaign donations reported to the FEC, PACs by type and topic, and money next to related votes. Facts only.");
@@ -905,8 +905,8 @@
         ${t.self ? barRow("The candidate's own money and loans", t.self, t.raised) : ""}
         ${t.transfers ? barRow("Transfers from joint fundraising committees", t.transfers, t.raised) : ""}
       </ul></section>
-      <section class="card"><h2>Gift sizes from individuals</h2><ul class="list">${(mo.sizes || []).map((s) => barRow(esc(s.label), s.total, ind)).join("")}</ul>
-        <p class="muted" style="font-size:13px">Gifts under $200 include those campaigns aren't required to itemize.</p></section>
+      ${mo.sizes ? `<section class="card"><h2>Gift sizes from individuals</h2><ul class="list">${mo.sizes.map((s) => barRow(esc(s.label), s.total, ind)).join("")}</ul>
+        <p class="muted" style="font-size:13px">Gifts under $200 include those campaigns aren't required to itemize.</p></section>` : ""}
       ${mo.states && mo.states.total ? `<section class="card"><h2>Home state or elsewhere</h2><ul class="list">${barRow(`From ${esc(STATES[m.state] || m.state)}`, mo.states.home, mo.states.total)}${barRow("From other states", mo.states.total - mo.states.home, mo.states.total)}</ul>
         <p class="muted" style="font-size:13px">Itemized individual gifts (over $200), by the donor's address. Top states: ${mo.states.top.map((s) => `${esc(s.state)} ${usd(s.total)}`).join(", ")}.</p></section>` : ""}
       ${P.list.length ? `<section class="card"><h2>PACs by type</h2><ul class="list">${Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => barRow(esc(k), v, P.total)).join("")}</ul>
