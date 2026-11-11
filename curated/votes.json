@@ -2,6 +2,40 @@
  "_readme": "Editorial layer: which votes WeHold highlights, plain-English summaries, and stance questions. Official data (date, tally, result, every member's position) is filled in automatically from the House Clerk and Senate records. Rules: neutral language, both sides' main argument when parties disagree, 'caution' when a vote bundles unrelated issues.",
  "votes": [
   {
+   "id": "S-119-2-258",
+   "title": "Energy & permitting package (H.R. 2347)",
+   "q": "On the motion to proceed",
+   "tags": [
+    "Energy",
+    "Permitting"
+   ],
+   "proc": true,
+   "sum": "The Senate is using H.R. 2347 as the vehicle for the Bipartisan American Affordability and Jobs Act of 2026, a large energy and permitting package. It would set shorter deadlines (generally 150 days) for lawsuits challenging environmental reviews and Clean Water Act permits, limit agencies' ability to revoke permits already issued, give federal regulators more power to approve major interstate power lines, and expect data centers to pay the full cost of grid service built for them. It also keeps the House bill's original text, which would stop sexual-abuse survivors from owing income tax on their settlements. This vote formally began debate on the bill. Supporters, including the President and energy and building-trades groups, say faster permitting will speed construction and lower power bills; opponents, including environmental and tribal groups and some Democrats, say it limits environmental review and the public's ability to challenge projects.",
+   "caution": "This Senate package rewrites a House bill about taxes on abuse-survivor settlements into a broad energy and permitting overhaul; the original tax provision is kept as one part. A vote here is mainly a vote on the permitting and energy changes.",
+   "related": "The day before, the Senate voted 73–25 to end the filibuster on starting debate (Senate roll 257).",
+   "bill": {
+    "label": "H.R. 2347",
+    "url": "https://www.congress.gov/bill/119th-congress/house-bill/2347"
+   }
+  },
+  {
+   "id": "S-119-2-257",
+   "title": "Energy & permitting package (H.R. 2347)",
+   "q": "Cloture on the motion to proceed · 60 votes needed",
+   "tags": [
+    "Energy",
+    "Permitting"
+   ],
+   "proc": true,
+   "sum": "The Senate is using H.R. 2347 as the vehicle for the Bipartisan American Affordability and Jobs Act of 2026, a large energy and permitting package. It would set shorter deadlines (generally 150 days) for lawsuits challenging environmental reviews and Clean Water Act permits, limit agencies' ability to revoke permits already issued, give federal regulators more power to approve major interstate power lines, and expect data centers to pay the full cost of grid service built for them. It also keeps the House bill's original text, which would stop sexual-abuse survivors from owing income tax on their settlements. This vote cleared the 60-vote hurdle to start debate, with most Republicans and about half of Democrats voting yes. Supporters, including the President and energy and building-trades groups, say faster permitting will speed construction and lower power bills; opponents, including environmental and tribal groups and some Democrats, say it limits environmental review and the public's ability to challenge projects.",
+   "caution": "This Senate package rewrites a House bill about taxes on abuse-survivor settlements into a broad energy and permitting overhaul; the original tax provision is kept as one part. A vote here is mainly a vote on the permitting and energy changes.",
+   "related": "The House passed the original H.R. 2347 (the survivor settlement tax bill) in April 2026. The Senate's separate Ratepayer Protection Act fell short on Oct 1 (Senate roll 254).",
+   "bill": {
+    "label": "H.R. 2347",
+    "url": "https://www.congress.gov/bill/119th-congress/house-bill/2347"
+   }
+  },
+  {
    "id": "S-119-2-256",
    "title": "Keith Sonderling for Secretary of Labor",
    "q": "On the nomination (confirmation)",
@@ -72,6 +106,23 @@
    "bill": {
     "label": "H.Con.Res. 89",
     "url": "http://www.congress.gov/bill/119th-congress/house-concurrent-resolution/89"
+   }
+  },
+  {
+   "id": "H-119-2-317",
+   "title": "Hegseth impeachment resolution (H.Res. 1655)",
+   "q": "Motion to refer to the Judiciary Committee",
+   "tags": [
+    "Impeachment",
+    "Military",
+    "War powers"
+   ],
+   "proc": true,
+   "sum": "A resolution from Rep. Thomas Massie (R-Ky.) to impeach Defense Secretary Pete Hegseth, with eight articles centered on continuing the Iran war in violation of the War Powers Resolution. Rep. Darrell Issa (R-Calif.) moved to send it to the Judiciary Committee instead of holding an immediate impeachment vote; the motion passed 211–204, nearly along party lines, with Massie joining Democrats against it. Massie said the resolution seeks accountability for unlawful conduct; the White House and Hegseth called it political and said the disputes are over policy, not impeachable offenses.",
+   "caution": "A Yes vote sent the resolution to committee rather than deciding impeachment directly; a No vote was a vote to keep it moving toward a full House vote. Neither is a final vote on impeachment.",
+   "bill": {
+    "label": "H.Res. 1655",
+    "url": "https://www.congress.gov/bill/119th-congress/house-resolution/1655"
    }
   },
   {
