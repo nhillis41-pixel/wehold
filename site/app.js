@@ -365,6 +365,7 @@
           ${m.url ? `<a class="btn ghost" href="${esc(m.url)}" target="_blank" rel="noopener">Official website</a>` : ""}
         </div>
       </section>
+      ${plusOn("money") ? `<a class="card linkcard" href="#/money/${esc(m.id)}"><span class="stack" style="gap:2px"><strong style="font-size:17px">Follow the money <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">Where ${esc(m.last)}'s campaign money comes from, reported to the FEC</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       ${plusOn("reportCard") ? `<a class="card linkcard" href="#/report/${esc(m.id)}"><span class="stack" style="gap:2px"><strong style="font-size:17px">Report card <span class="pill new">Plus</span></strong><span class="muted" style="font-size:14px">How ${esc(m.last)} lines up with you, topic by topic and over time</span></span><span class="go" aria-hidden="true">→</span></a>` : ""}
       <section class="stack">
         <h2>Key votes</h2>
@@ -424,13 +425,14 @@
     const people = delegation().filter((m) => m.chamber === v.ch);
     if (!viewVote.seen || viewVote.seen !== v.id) learn(topicsOfVote(v));
     viewVote.seen = v.id;
-    main.innerHTML = `<a href="#/votes">‹ The Docket</a>${voteCard(v)}${topicChips(v)}
+    main.innerHTML = `<a href="#/votes">‹ The Docket</a>${voteCard(v)}${topicChips(v)}<div id="vote-money"></div>
       <section class="card">
         <h2>Your instruction</h2>
         <p>Tell your ${v.ch === "Senate" ? "senators" : "representative"} where you stand on ${esc(v.title)}. You write it; you send it.</p>
         ${people.length ? `<div class="row">${people.map((m) => `<a class="btn" href="#/write/${esc(m.id)}?vote=${encodeURIComponent(v.id)}">Write to ${honor(m)} ${esc(m.last)}</a>`).join("")}</div>` : `<p><a href="#/">Add your ZIP code</a> first so we know who represents you.</p>`}
       </section>`;
     bindChips(v);
+    moneyForVote(v);
   }
 
   // ---------- My Charter: broad stance questions + bill questions ----------
@@ -849,6 +851,93 @@
     main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>${esc(title)}</h1><p class="lede">${esc(blurb)} It's part of WeHold Plus, which is being tested now.</p></header><p><a class="btn" href="#/plus">About WeHold Plus</a></p>`;
   }
 
+  // ---------- WeHold Plus: follow the money ----------
+  // Facts reported to the FEC, never a judgment. No individual donor names (FEC rule): totals, gift sizes,
+  // states, donor employers (added up) and the PACs that gave. PAC topic groups are WeHold's own, and say so.
+  const KINDS = { leadership: "Leadership PACs (run by other politicians)", C: "Corporate PACs", W: "Corporate PACs", L: "Labor union PACs", T: "Trade association PACs", M: "Membership group PACs", V: "Cooperative PACs", nonconnected: "Independent and issue PACs", other: "Other committees" };
+  const usd = (n) => { n = Number(n || 0); const a = Math.abs(n); return (n < 0 ? "−" : "") + (a >= 1e6 ? "$" + (a / 1e6).toFixed(a >= 1e7 ? 0 : 1) + "M" : a >= 1e4 ? "$" + Math.round(a / 1e3) + "K" : "$" + Math.round(a).toLocaleString("en-US")); };
+  const share = (a, b) => (b > 0 ? Math.round((100 * a) / b) : 0);
+  async function loadMoney(id) { D.money = D.money || {}; if (!(id in D.money)) D.money[id] = await getJSON(`data/money/${id}.json`).catch(() => null); return D.money[id]; }
+  async function loadPacTopics() { if (!D.pacTopics) D.pacTopics = await getJSON("pac_topics.json").catch(() => ({})); return D.pacTopics; }
+  const pacTopicMap = (t) => (t && t.pacs) || {};
+  function pacByTopic(mo, map) {
+    const out = {}; let grouped = 0;
+    for (const p of (mo.pacs && mo.pacs.list) || []) { const t = map[p.id]; if (t && D.TM[t]) { out[t] = (out[t] || 0) + p.total; grouped += p.total; } }
+    return { out, grouped };
+  }
+  const barRow = (label, amt, of, note) => `<li style="display:block"><span style="display:flex;justify-content:space-between;gap:8px"><span>${label}</span><span class="muted">${usd(amt)}${of ? ` · ${share(amt, of)}%` : ""}${note ? " · " + note : ""}</span></span><div class="bar" aria-hidden="true"><i style="width:${of ? Math.min(100, (100 * amt) / of) : 0}%"></i></div></li>`;
+  const cycleLabel = (c) => `${c - 1}–${c}`;
+  function moneyHeadline(m, mo) {
+    if (!mo) return `<span class="muted">Not collected yet. Campaign finance data is gathered from the FEC over the course of a week.</span>`;
+    if (mo.none) return `<span class="muted">No FEC campaign reports for the ${cycleLabel(mo.cycle)} cycle.</span>`;
+    const t = mo.totals, ind = t.indItemized + t.indUnitemized;
+    return `Raised <strong>${usd(t.raised)}</strong> · ${share(t.pac, t.raised)}% from PACs · ${share(t.indUnitemized, ind)}% of individual money in gifts under $200`;
+  }
+  async function viewMoneyHome() {
+    if (!plusOn("money")) return plusLockedFor("Follow the money", "Campaign donations reported to the FEC, PACs by type and topic, and money next to related votes. Facts only.");
+    const del = delegation();
+    main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus · Follow the money</span><h1>Your officials' campaign money</h1>
+      <p class="lede">What each campaign reported to the Federal Election Commission this election cycle. Facts only: a contribution doesn't show why anyone voted a certain way.</p></header>
+      ${del.length ? `<div class="stack" id="moneyList">${del.map((m) => `<a class="card linkcard" href="#/money/${esc(m.id)}"><span class="stack" style="gap:2px"><strong style="font-size:17px">${honor(m)} ${esc(m.name)}</strong><span class="muted" style="font-size:14px" data-mh="${esc(m.id)}">Loading…</span></span><span class="go" aria-hidden="true">→</span></a>`).join("")}</div>` : `<p class="card"><a href="#/">Add your ZIP code</a> to see your own officials.</p>`}`;
+    for (const m of del) { const mo = await loadMoney(m.id); const el = main.querySelector(`[data-mh="${m.id}"]`); if (el) el.innerHTML = moneyHeadline(m, mo); }
+  }
+  async function viewMoney(id) {
+    if (!plusOn("money")) return plusLockedFor("Follow the money", "Campaign donations reported to the FEC, PACs by type and topic, and money next to related votes. Facts only.");
+    const m = D.byId[id];
+    if (!m) { main.innerHTML = `<p>We couldn't find that official. <a href="#/money">Back</a></p>`; return; }
+    main.innerHTML = `<a href="#/member/${esc(m.id)}">‹ ${esc(m.last)}'s record</a><p class="muted">Loading campaign finance data…</p>`;
+    const [mo, map] = [await loadMoney(m.id), pacTopicMap(await loadPacTopics())];
+    const head = `<a href="#/member/${esc(m.id)}">‹ ${esc(m.last)}'s record</a><header class="pagehead"><span class="eyebrow">WeHold Plus · Follow the money</span><h1>${honor(m)} ${esc(m.name)}</h1>`;
+    if (!mo || mo.none) { main.innerHTML = head + `<p class="lede">${moneyHeadline(m, mo)}</p></header>`; return; }
+    const t = mo.totals, ind = t.indItemized + t.indUnitemized, pt = pacByTopic(mo, map), P = mo.pacs || { list: [], byKind: {}, total: 0 };
+    const kinds = Object.entries(P.byKind || {}).reduce((acc, [k, v]) => { const n = KINDS[k] || KINDS.other; acc[n] = (acc[n] || 0) + v; return acc; }, {});
+    const fecUrl = `https://www.fec.gov/data/candidate/${encodeURIComponent(mo.fec)}/?cycle=${mo.cycle}`;
+    main.innerHTML = head + `<p class="lede">What ${esc(m.last)}'s campaign${mo.committeeName ? ` (${esc(mo.committeeName)})` : ""} reported to the FEC for the ${cycleLabel(mo.cycle)} cycle${mo.through ? `, through ${fmtDate(mo.through)}` : ""}.</p></header>
+      <div class="stats">
+        <div class="stat"><span class="big">${usd(t.raised)}</span><span class="muted">raised</span></div>
+        <div class="stat"><span class="big">${usd(t.spent)}</span><span class="muted">spent</span></div>
+        <div class="stat"><span class="big">${usd(t.cash)}</span><span class="muted">cash on hand</span></div>
+      </div>
+      <section class="card"><h2>Where the money came from</h2><ul class="list">
+        ${barRow("Individual donors", ind, t.raised)}
+        ${barRow("PACs and other committees", t.pac, t.raised)}
+        ${t.party ? barRow("Political party committees", t.party, t.raised) : ""}
+        ${t.self ? barRow("The candidate's own money and loans", t.self, t.raised) : ""}
+        ${t.transfers ? barRow("Transfers from joint fundraising committees", t.transfers, t.raised) : ""}
+      </ul></section>
+      <section class="card"><h2>Gift sizes from individuals</h2><ul class="list">${(mo.sizes || []).map((s) => barRow(esc(s.label), s.total, ind)).join("")}</ul>
+        <p class="muted" style="font-size:13px">Gifts under $200 include those campaigns aren't required to itemize.</p></section>
+      ${mo.states && mo.states.total ? `<section class="card"><h2>Home state or elsewhere</h2><ul class="list">${barRow(`From ${esc(STATES[m.state] || m.state)}`, mo.states.home, mo.states.total)}${barRow("From other states", mo.states.total - mo.states.home, mo.states.total)}</ul>
+        <p class="muted" style="font-size:13px">Itemized individual gifts (over $200), by the donor's address. Top states: ${mo.states.top.map((s) => `${esc(s.state)} ${usd(s.total)}`).join(", ")}.</p></section>` : ""}
+      ${P.list.length ? `<section class="card"><h2>PACs by type</h2><ul class="list">${Object.entries(kinds).sort((a, b) => b[1] - a[1]).map(([k, v]) => barRow(esc(k), v, P.total)).join("")}</ul>
+        <p class="muted" style="font-size:13px">From each PAC's own registration with the FEC. ${P.count} PACs gave ${usd(P.total)}${P.truncated ? " (the most recent 1,000 contributions)" : ""}.</p></section>` : ""}
+      ${pt.grouped ? `<section class="card"><h2>PACs by topic</h2><ul class="list">${Object.entries(pt.out).sort((a, b) => b[1] - a[1]).map(([k, v]) => barRow(esc(D.TM[k].name), v, P.total)).join("")}</ul>
+        <p class="muted" style="font-size:13px">WeHold grouped PACs by topic from their names and sponsoring organizations; the grouping is ours, the amounts are the FEC's. ${share(pt.grouped, P.total)}% of PAC money is grouped so far.</p></section>` : ""}
+      ${P.list.length ? `<section class="card"><h2>Largest PAC contributors</h2><ul class="list">${P.list.slice(0, 10).map((p) => `<li><span>${p.id.startsWith("C") ? `<a href="https://www.fec.gov/data/committee/${esc(p.id)}/" target="_blank" rel="noopener">${esc(p.name)}</a>` : esc(p.name)}<br><span class="muted" style="font-size:13px">${esc(KINDS[p.kind] || KINDS.other)}${map[p.id] && D.TM[map[p.id]] ? " · " + esc(D.TM[map[p.id]].name) : ""}</span></span><span class="muted">${usd(p.total)}</span></li>`).join("")}</ul></section>` : ""}
+      ${mo.employers && mo.employers.length ? `<section class="card"><h2>Where individual donors work</h2><ul class="list">${mo.employers.map((e) => `<li><span>${esc(e.name)}</span><span class="muted">${usd(e.total)} · ${num(e.n)} gift${e.n === 1 ? "" : "s"}</span></li>`).join("")}</ul>
+        <p class="muted" style="font-size:13px">Employers donors listed on gifts over $200, added up. Companies don't give directly to campaigns; these are their employees' personal gifts. Retired and self-employed donors aren't shown.</p></section>` : ""}
+      <section class="card"><p>These are facts each campaign reported to the Federal Election Commission. A contribution doesn't show why an official voted a certain way.</p><p><a href="${esc(fecUrl)}" target="_blank" rel="noopener">See the full record on FEC.gov</a></p></section>`;
+  }
+  // On a vote page: PAC money in this vote's topics, for the user's officials in that chamber.
+  async function moneyForVote(v) {
+    if (!plusOn("money")) return;
+    const ts = topicsOfVote(v), map = pacTopicMap(await loadPacTopics());
+    if (!ts.length || !Object.keys(map).length) return;
+    const people = delegation().filter((m) => m.chamber === v.ch);
+    const rows = [];
+    for (const m of people) {
+      const mo = await loadMoney(m.id); if (!mo || mo.none || !mo.pacs) continue;
+      const pt = pacByTopic(mo, map), amt = ts.reduce((a, t) => a + (pt.out[t] || 0), 0);
+      rows.push({ m, amt, cycle: mo.cycle });
+    }
+    const box = document.getElementById("vote-money");
+    if (!box || !rows.length || !rows.some((r) => r.amt > 0)) return;
+    box.innerHTML = `<section class="card"><p class="label" style="margin-top:0">Follow the money <span class="pill new">Plus</span></p>
+      <p>Campaign money from ${ts.map((t) => esc(D.TM[t].name)).join(" and ")} PACs, ${cycleLabel(rows[0].cycle)} cycle:</p>
+      <ul class="list">${rows.map((r) => `<li><a href="#/money/${esc(r.m.id)}">${honor(r.m)} ${esc(r.m.last)}</a><span class="muted">${usd(r.amt)}</span></li>`).join("")}</ul>
+      <p class="muted" style="font-size:13px">FEC amounts; the topic grouping is WeHold's. A contribution doesn't show why an official voted a certain way.</p></section>`;
+  }
+
   // ---------- WeHold Plus: report card ----------
   // Built only from the user's own answers and official votes, on this device. Never a grade or a label.
   const plusOn = (f) => !!(window.WeHoldPlus && window.WeHoldPlus.isOn(f));
@@ -1006,7 +1095,7 @@
     const [path, qs] = raw.split("?");
     const params = new URLSearchParams(qs || "");
     const parts = path.split("/").filter(Boolean);
-    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home", alerts: "home", topics: "home" }[parts[0] || ""];
+    const nav = { "": "home", member: "home", write: "home", where: "where", results: "where", votes: "votes", vote: "votes", charter: "charter", about: "about", report: "home", compare: "home", alerts: "home", topics: "home", money: "home" }[parts[0] || ""];
     document.querySelectorAll("[data-nav]").forEach((a) => (a.dataset.nav === nav ? a.setAttribute("aria-current", "page") : a.removeAttribute("aria-current")));
     if (parts[0] === "member") viewMember(decodeURIComponent(parts[1] || ""));
     else if (parts[0] === "votes") viewVotes();
@@ -1015,6 +1104,8 @@
     else if (parts[0] === "write") viewWrite(decodeURIComponent(parts[1] || ""), params);
     else if (parts[0] === "about") viewAbout();
     else if (parts[0] === "where") viewWhere();
+    else if (parts[0] === "money" && parts[1]) viewMoney(decodeURIComponent(parts[1]));
+    else if (parts[0] === "money") viewMoneyHome();
     else if (parts[0] === "alerts") viewAlerts();
     else if (parts[0] === "topics") viewTopics();
     else if (parts[0] === "report") viewReport(decodeURIComponent(parts[1] || ""));

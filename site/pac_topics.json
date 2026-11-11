@@ -1,0 +1,4 @@
+{
+ "note": "WeHold Plus follow the money: PAC committee id -> WeHold topic id (from site/topics.json). This is WeHold's own grouping, based on each PAC's name and sponsoring organization, and the app labels it that way. Leave a PAC out when its topic is unclear (for example, a company with business across many topics, or a leadership PAC).",
+ "pacs": {}
+}
