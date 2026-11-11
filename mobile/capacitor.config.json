@@ -1,0 +1,21 @@
+{
+  "appId": "com.weholdllc.wehold",
+  "appName": "WeHold",
+  "webDir": "www",
+  "backgroundColor": "#F2EBD9",
+  "android": {
+    "allowMixedContent": false
+  },
+  "ios": {
+    "contentInset": "never"
+  },
+  "plugins": {
+    "PushNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "alert"
+      ]
+    }
+  }
+}

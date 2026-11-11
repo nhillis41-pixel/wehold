@@ -29,7 +29,16 @@
 
   // ---------- data ----------
   const D = { members: [], byId: {}, votes: [], questions: [], principles: [], PM: {}, att: null, meta: {}, rolls: null };
+  // In the phone app, data comes live from app.weholdllc.com so it's as current as the website;
+  // the copy bundled with the app is used only if that can't be reached.
   async function getJSON(path) {
+    const remote = window.WEHOLD_NATIVE && window.WEHOLD_REMOTE && !/^https?:/.test(path);
+    if (remote) {
+      try {
+        const r = await fetch(window.WEHOLD_REMOTE + path, { cache: "no-cache" });
+        if (r.ok) return r.json();
+      } catch (e) { /* offline: fall back to the bundled copy */ }
+    }
     const r = await fetch(path, { cache: "no-cache" });
     if (!r.ok) throw new Error(path + " " + r.status);
     return r.json();
@@ -714,6 +723,13 @@
   const AK = "wehold-alerts";
   const A = Object.assign({ reads: {}, follow: {}, asked: {}, read: {} }, (() => { try { return JSON.parse(localStorage.getItem(AK) || "{}"); } catch (e) { return {}; } })());
   const saveA = () => { try { localStorage.setItem(AK, JSON.stringify(A)); } catch (e) { /* private mode */ } };
+  // Phone app only: sign this device up for the anonymous topic channels it follows.
+  const NAT = () => window.WeHoldNative || null;
+  function syncPush(askFirst) {
+    const n = NAT(); if (!n || !n.pushAvailable) return;
+    const go = () => n.sendTopics(Object.keys(A.follow).filter((id) => A.follow[id]));
+    if (askFirst) n.enablePush().then(go).catch(() => {}); else go();
+  }
   const ASK_AFTER = 3, ASK_AGAIN_DAYS = 30, ALERT_DAYS = 60, NEW_DAYS = 14;
   const todayISO = () => new Date().toISOString().slice(0, 10);
   const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
@@ -757,6 +773,7 @@
     el.querySelectorAll("[data-ask]").forEach((b) => (b.onclick = () => {
       if (b.dataset.ask === "yes") { A.follow[t] = 1; toast(`Following ${D.TM[t].name}. Change it any time in My topics.`); }
       A.asked[t] = todayISO(); saveA(); el.remove();
+      if (b.dataset.ask === "yes") syncPush(true);
     }));
   }
   const followed = () => Object.keys(A.follow).filter((id) => A.follow[id] && D.TM[id]);
@@ -815,9 +832,9 @@
     main.innerHTML = `<a href="#/alerts">‹ Alerts</a><header class="pagehead"><span class="eyebrow">WeHold Plus · Smart alerts</span><h1>My topics</h1>
       <p class="lede">Get alerts when a bill on these topics comes up for a vote. Following a topic says what you care about, not which side you're on.</p></header>
       <ul class="list card">${(D.topics || []).map((t) => `<li><span><strong>${esc(t.name)}</strong>${A.reads[t.id] ? `<br><span class="muted" style="font-size:13px">You've read ${A.reads[t.id]} item${A.reads[t.id] === 1 ? "" : "s"} on this</span>` : ""}</span><button class="btn small${A.follow[t.id] ? "" : " ghost"}" type="button" data-follow="${esc(t.id)}" aria-pressed="${!!A.follow[t.id]}">${A.follow[t.id] ? "Following" : "Follow"}</button></li>`).join("")}</ul>
-      <section class="card"><h3>What WeHold keeps on this device</h3><p>A count of how many times you've opened or answered something on each topic (${learned} so far), the topics you follow, and which alerts you've seen. It never leaves this device and never includes your answers' direction. When phone notifications arrive with the app-store version, your phone will sign up for topic channels with an anonymous code, so WeHold still won't know who you are.</p>
+      <section class="card"><h3>What WeHold keeps on this device</h3><p>A count of how many times you've opened or answered something on each topic (${learned} so far), the topics you follow, and which alerts you've seen. It never leaves this device and never includes your answers' direction. ${NAT() && NAT().pushAvailable ? "For phone notifications, your phone signs up for these topics with an anonymous code from Apple or Google. WeHold never learns who you are or where you live." : "When phone notifications arrive with the app-store version, your phone will sign up for topic channels with an anonymous code, so WeHold still won't know who you are."}</p>
       <button class="linkbtn" type="button" id="forget">Clear what WeHold has learned on this device</button></section>`;
-    main.querySelectorAll("[data-follow]").forEach((b) => (b.onclick = () => { const id = b.dataset.follow; if (A.follow[id]) delete A.follow[id]; else { A.follow[id] = 1; delete A.asked[id]; } saveA(); const y = scrollY; viewTopics(); scrollTo(0, y); }));
+    main.querySelectorAll("[data-follow]").forEach((b) => (b.onclick = () => { const id = b.dataset.follow; if (A.follow[id]) delete A.follow[id]; else { A.follow[id] = 1; delete A.asked[id]; } saveA(); syncPush(!!A.follow[id]); const y = scrollY; viewTopics(); scrollTo(0, y); }));
     document.getElementById("forget").onclick = () => { A.reads = {}; A.asked = {}; saveA(); toast("Cleared. Topics you follow are kept."); viewTopics(); };
   }
   function topicChips(v) {
@@ -826,7 +843,7 @@
     return `<section class="card noprint"><p class="label" style="margin-top:0">Topics</p><div class="row">${ts.map((id) => `<button class="btn small${A.follow[id] ? "" : " ghost"}" type="button" data-chip="${esc(id)}" aria-pressed="${!!A.follow[id]}">${A.follow[id] ? "✓ Following " : "Follow "}${esc(D.TM[id].name)}</button>`).join("")}</div></section>`;
   }
   function bindChips(v) {
-    main.querySelectorAll("[data-chip]").forEach((b) => (b.onclick = () => { const id = b.dataset.chip; if (A.follow[id]) delete A.follow[id]; else { A.follow[id] = 1; delete A.asked[id]; toast(`Following ${D.TM[id].name}.`); } saveA(); viewVote(v.id); }));
+    main.querySelectorAll("[data-chip]").forEach((b) => (b.onclick = () => { const id = b.dataset.chip; if (A.follow[id]) delete A.follow[id]; else { A.follow[id] = 1; delete A.asked[id]; toast(`Following ${D.TM[id].name}.`); } saveA(); syncPush(!!A.follow[id]); viewVote(v.id); }));
   }
   function plusLockedFor(title, blurb) {
     main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>${esc(title)}</h1><p class="lede">${esc(blurb)} It's part of WeHold Plus, which is being tested now.</p></header><p><a class="btn" href="#/plus">About WeHold Plus</a></p>`;
@@ -922,6 +939,7 @@
     const c = reportImage(r);
     const blob = await new Promise((res) => c.toBlob(res, "image/png"));
     const name = `wehold-report-${(r.m.last || "official").toLowerCase().replace(/[^a-z0-9]+/g, "-")}.png`;
+    if (blob && NAT()) { try { if (await NAT().shareImage(blob, name, "My WeHold report card")) return; } catch (e) { if (e && /cancel/i.test(e.message || "")) return; } }
     const file = blob && typeof File === "function" ? new File([blob], name, { type: "image/png" }) : null;
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
       try { await navigator.share({ files: [file], title: "My WeHold report card" }); return; } catch (e) { if (e && e.name === "AbortError") return; }
@@ -1008,5 +1026,5 @@
     if (parts[0] !== "plus") maybeAsk();
   }
   window.addEventListener("hashchange", render);
-  loadData().then(() => (window.WeHoldPlus ? window.WeHoldPlus.init() : null)).then(render).catch(() => { main.innerHTML = `<p>WeHold couldn't load its data. Refresh the page to try again.</p>`; });
+  loadData().then(() => (window.WeHoldPlus ? window.WeHoldPlus.init() : null)).then(() => { if (plusOn("alerts")) syncPush(false); }).then(render).catch(() => { main.innerHTML = `<p>WeHold couldn't load its data. Refresh the page to try again.</p>`; });
 })();

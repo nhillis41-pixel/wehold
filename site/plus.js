@@ -3,22 +3,24 @@
  * HOW TO USE
  * - Turn a feature on for everyone: set `public: true` on it below.
  * - Turn a feature on for testers only: set `beta: true` (and leave public: false).
+ * - Sell a finished feature: set `paid: true`. Subscribers (in the phone app, through RevenueCat) then get it.
+ *   Testers keep everything marked beta. Keep `public: false` for anything that's part of Plus.
  * - Add a tester: run the code through SHA-256 (see README "WeHold Plus testers") and add the hash to TESTERS.
  * - Remove a tester: delete their line from TESTERS. Plus turns off on their device the next time the app loads.
  *
- * Tester access is checked on the device. That's fine for private testing; paid access will come from
- * RevenueCat (app stores) at launch.
+ * Tester access is checked on the device. That's fine for private testing. Paid access comes from the
+ * App Store / Google Play subscription, checked through RevenueCat in native.js.
  */
 (() => {
   "use strict";
 
   // ---------- feature switches ----------
   const FEATURES = {
-    alerts:      { name: "Smart alerts",      blurb: "Notices when a bill on a topic you follow comes up for a vote, when your officials vote differently from you or miss a vote, and a Sunday briefing.", beta: true,  public: false },
-    reportCard:  { name: "Report card",       blurb: "How each of your officials lines up with you over time, topic by topic. Share it as an image or PDF, or compare any two officials.", beta: true,  public: false },
-    election:    { name: "Election mode",     blurb: "A ballot preview: your incumbents' records next to your answers, plus where and when to vote.", beta: true,  public: false },
-    money:       { name: "Follow the money",  blurb: "Campaign donations by industry next to votes on related bills, and members' stock trades. Facts only.", beta: true,  public: false },
-    billDetail:  { name: "Bill breakdown",    blurb: "Section by section in plain English: what changes, what it costs, who it affects, both sides' arguments and every vote along the way.", beta: true,  public: false },
+    alerts:      { name: "Smart alerts",      blurb: "Notices when a bill on a topic you follow comes up for a vote, when your officials vote differently from you or miss a vote, and a Sunday briefing.", beta: true,  paid: false, public: false },
+    reportCard:  { name: "Report card",       blurb: "How each of your officials lines up with you over time, topic by topic. Share it as an image or PDF, or compare any two officials.", beta: true,  paid: false, public: false },
+    election:    { name: "Election mode",     blurb: "A ballot preview: your incumbents' records next to your answers, plus where and when to vote.", beta: true,  paid: false, public: false },
+    money:       { name: "Follow the money",  blurb: "Campaign donations by industry next to votes on related bills, and members' stock trades. Facts only.", beta: true,  paid: false, public: false },
+    billDetail:  { name: "Bill breakdown",    blurb: "Section by section in plain English: what changes, what it costs, who it affects, both sides' arguments and every vote along the way.", beta: true,  paid: false, public: false },
   };
 
   // Features that are built and can be opened from the Plus page.
@@ -40,6 +42,8 @@
   const keep = (v) => { try { localStorage.setItem(KEY, JSON.stringify(v)); } catch (e) { /* private mode */ } };
   let state = load();
   let tester = null; // label of the matched tester, or null
+  let subscriber = false; // active WeHold Plus subscription (phone app only)
+  const N = () => window.WeHoldNative || null;
 
   const norm = (c) => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
   async function sha256(text) {
@@ -58,23 +62,26 @@
     const brand = document.querySelector(".topbar .brand");
     if (!brand) return;
     let b = document.getElementById("plus-badge");
-    if (tester && !b) {
+    const label = subscriber ? "Plus" : tester ? "Plus · Testing" : "";
+    if (label && !b) {
       b = document.createElement("a");
       b.id = "plus-badge"; b.href = "#/plus"; b.className = "plus-badge";
-      b.textContent = "Plus · Testing";
       brand.insertAdjacentElement("afterend", b);
-    } else if (!tester && b) b.remove();
+    }
+    if (b) { if (label) b.textContent = label; else b.remove(); }
   }
 
   const Plus = {
     features: FEATURES,
     get tester() { return tester; },
+    get subscriber() { return subscriber; },
     /** Is this feature available to the person using this device? */
-    isOn(f) { const x = FEATURES[f]; return !!x && (x.public || (x.beta && !!tester)); },
+    isOn(f) { const x = FEATURES[f]; return !!x && (x.public || (x.beta && !!tester) || (x.paid && subscriber)); },
     /** Re-check the saved code (so a removed tester loses access on the next load). */
     async init() {
       tester = await match(state.code);
       if (!tester && state.code) { delete state.code; keep(state); }
+      if (N()) subscriber = await N().isSubscriber().catch(() => false);
       badge();
       return tester;
     },
@@ -93,14 +100,23 @@
         history.replaceState(null, "", "#/plus"); // keep the code out of the address bar
         if (toast) toast(t ? "WeHold Plus testing is on for this device." : "That invite code didn't work.");
       }
-      if (!tester) {
+      if (!tester && !subscriber) {
+        const sellable = Object.keys(FEATURES).filter((k) => FEATURES[k].paid);
+        const pk = N() && N().subscriptionsAvailable && sellable.length ? await N().packages() : [];
+        const per = (p) => { const t = (p.packageType || "").toUpperCase(); return t === "ANNUAL" ? "year" : t === "MONTHLY" ? "month" : t === "WEEKLY" ? "week" : ""; };
         main.innerHTML = `
-          <header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>Coming soon.</h1>
-          <p class="lede">WeHold will always be free. Plus will add deeper bill breakdowns, smart alerts and more. It's being tested by a small group right now.</p></header>
+          <header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>${pk.length ? "Go deeper." : "Coming soon."}</h1>
+          <p class="lede">WeHold will always be free: every official, every vote, attendance and plain-English summaries. Plus adds depth, never a slant.</p></header>
+          ${sellable.length ? `<div class="grid">${sellable.map((k) => `<section class="card"><h3>${esc(FEATURES[k].name)}</h3><p>${esc(FEATURES[k].blurb)}</p></section>`).join("")}</div>` : ""}
+          ${pk.length ? `<section class="card stack" style="max-width:30rem">
+            ${pk.map((p) => `<button class="btn" type="button" data-buy="${esc(p.identifier)}">${esc(p.product.priceString)}${per(p) ? " per " + per(p) : ""}${p.product.introPrice ? " · free trial" : ""}</button>`).join("")}
+            <p class="muted" style="font-size:13px">Payment is charged to your ${N().platform === "ios" ? "Apple ID" : "Google Play"} account. The subscription renews automatically unless canceled at least 24 hours before the end of the period; manage or cancel it in your account settings. <a href="terms.html">Terms of Use</a> · <a href="privacy.html">Privacy Policy</a></p>
+            <button class="linkbtn" type="button" id="plus-restore">Restore purchases</button></section>`
+          : `<p class="lede">${N() ? "Subscriptions open soon." : "Plus will be available as a subscription in the WeHold app for iPhone and Android."} It's being tested by a small group right now.</p>`}
           <form class="card" id="plus-form" style="max-width:30rem">
-            <label class="f" for="plus-code">Have an invite code?</label>
+            <label class="f" for="plus-code">Have a tester invite code?</label>
             <input id="plus-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Invite code">
-            <button class="btn" type="submit">Turn on testing</button>
+            <button class="btn ghost" type="submit">Turn on testing</button>
           </form>`;
         document.getElementById("plus-form").addEventListener("submit", async (e) => {
           e.preventDefault();
@@ -108,6 +124,22 @@
           if (toast) toast(t ? "WeHold Plus testing is on for this device." : "That invite code didn't work.");
           if (t) this.view(main, null, toast);
         });
+        main.querySelectorAll("[data-buy]").forEach((b) => (b.onclick = async () => {
+          b.disabled = true;
+          try { const ok = await N().buy(b.dataset.buy); if (ok) { subscriber = true; badge(); if (toast) toast("Welcome to WeHold Plus."); this.view(main, null, toast); } }
+          catch (err) { if (toast) toast((err && err.message) || "The purchase didn't go through."); }
+          b.disabled = false;
+        }));
+        const rs = document.getElementById("plus-restore");
+        if (rs) rs.onclick = async () => { const ok = await N().restore().catch(() => false); subscriber = !!ok; badge(); if (toast) toast(ok ? "WeHold Plus restored." : "No WeHold Plus subscription found for this account."); if (ok) this.view(main, null, toast); };
+        return;
+      }
+      if (subscriber && !tester) {
+        const mine = Object.keys(FEATURES).filter((k) => this.isOn(k));
+        main.innerHTML = `<header class="pagehead"><span class="eyebrow">WeHold Plus</span><h1>Thanks for subscribing.</h1>
+          <p class="lede">Your subscription keeps WeHold independent, with no ads and no tracking.</p></header>
+          <div class="grid">${mine.map((k) => `<section class="card"><h3>${esc(FEATURES[k].name)}</h3><p>${esc(FEATURES[k].blurb)}</p>${LINKS[k] ? `<p><a class="btn small" href="${LINKS[k]}">Open</a></p>` : ""}</section>`).join("")}</div>
+          <p class="actions"><a class="btn ghost small" href="${esc(N() ? N().manageUrl : "#")}" target="_blank" rel="noopener">Manage subscription</a></p>`;
         return;
       }
       const rows = Object.keys(FEATURES).map((k) => {

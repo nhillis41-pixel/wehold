@@ -56,7 +56,7 @@ jobs:
           mv_if test_pipeline.py pipeline/tests/test_pipeline.py
           mv_if house_roll.xml pipeline/tests/fixtures/house_roll.xml
           mv_if senate_roll.xml pipeline/tests/fixtures/senate_roll.xml
-          for f in app.js plus.js styles.css index.html icon.svg manifest.webmanifest; do mv_if "$f" "site/$f"; done
+          for f in app.js plus.js native.js topics.json styles.css index.html icon.svg manifest.webmanifest; do mv_if "$f" "site/$f"; done
           mv_if votes.json curated/votes.json
           mv_if download .gitignore
           mv_if http-message-signatures-directory site/.well-known/http-message-signatures-directory

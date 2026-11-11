@@ -1,0 +1,25 @@
+{
+  "name": "wehold-mobile",
+  "private": true,
+  "version": "1.0.0",
+  "description": "WeHold iPhone and Android app: the web app in site/, wrapped with Capacitor.",
+  "scripts": {
+    "web": "node scripts/copy-web.mjs",
+    "sync": "npm run web && npx cap sync",
+    "assets": "npx @capacitor/assets generate --iconBackgroundColor '#F2EBD9' --iconBackgroundColorDark '#16130E' --splashBackgroundColor '#F2EBD9' --splashBackgroundColorDark '#16130E'"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.6.0",
+    "@capacitor/app": "^8.1.2",
+    "@capacitor/core": "^8.6.0",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/ios": "^8.6.0",
+    "@capacitor/push-notifications": "^8.1.3",
+    "@capacitor/share": "^8.0.3",
+    "@revenuecat/purchases-capacitor": "^14.1.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^4.0.0",
+    "@capacitor/cli": "^8.6.0"
+  }
+}
