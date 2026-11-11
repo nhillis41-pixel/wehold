@@ -101,7 +101,7 @@ jobs:
           status: draft
 
   ios:
-    runs-on: macos-15
+    runs-on: macos-15-intel   # Intel Macs: GitHub often has no Apple-chip Macs free
     timeout-minutes: 60
     defaults:
       run:
