@@ -4,14 +4,14 @@
  "electionDay": "2026-11-03",
  "latest": {
   "House": "2026-11-12",
-  "Senate": "2026-11-10"
+  "Senate": "2026-11-12"
  },
  "rolls": {
   "House": 685,
-  "Senate": 917
+  "Senate": 918
  },
  "unavailable": {},
- "updated": "2026-11-12T19:08Z",
+ "updated": "2026-11-12T20:03Z",
  "warnings": 0,
  "zips": {
   "split": 5346,
