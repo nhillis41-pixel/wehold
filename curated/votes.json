@@ -109,6 +109,34 @@
    }
   },
   {
+   "id": "H-119-2-323",
+   "title": "Major Richard Star Act (H.R. 2102)",
+   "q": "On passage",
+   "tags": [
+    "Veterans",
+    "Military"
+   ],
+   "sum": "Lets veterans who were medically retired from the military with fewer than 20 years of service because of a combat-related disability collect both their full military retirement pay and their VA disability compensation. Under current law, most of these roughly 50,000 veterans have their retirement pay reduced by the amount of their VA disability payment. The bill came to the floor through a discharge petition signed by a majority of House members, after the House voted 245–175 the day before to take it up (House roll 320). Supporters, including veterans' groups and members of both parties, say these veterans earned both benefits through separate service and injury; critics, including some Republican leaders, raised its multibillion-dollar cost and favored a broader veterans package that would offset the cost with savings elsewhere.",
+   "bill": {
+    "label": "H.R. 2102",
+    "url": "https://www.congress.gov/bill/119th-congress/house-bill/2102"
+   }
+  },
+  {
+   "id": "H-119-2-321",
+   "title": "403(b) retirement plan investments (H.R. 1013)",
+   "q": "On passage",
+   "tags": [
+    "Retirement",
+    "Securities"
+   ],
+   "sum": "Changes federal securities laws so that 403(b) retirement plans, which cover many teachers, hospital workers and other employees of public schools and nonprofits, can offer collective investment trusts and certain insurance-company investment accounts, as 401(k) plans already can. The House passed the same provision in December 2025 as part of a larger package (the INVEST Act). Supporters, led by sponsor Rep. Frank Lucas (R-Okla.) and retirement industry groups, say it gives these workers access to lower-cost investment options; opponents, including Financial Services Committee ranking Democrat Maxine Waters, say it removes securities-law protections for savers, since many 403(b) plans are not covered by federal pension law (ERISA).",
+   "bill": {
+    "label": "H.R. 1013",
+    "url": "https://www.congress.gov/bill/119th-congress/house-bill/1013"
+   }
+  },
+  {
    "id": "H-119-2-317",
    "title": "Hegseth impeachment resolution (H.Res. 1655)",
    "q": "Motion to refer to the Judiciary Committee",
