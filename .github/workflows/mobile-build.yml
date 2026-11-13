@@ -35,6 +35,7 @@ jobs:
     timeout-minutes: 40
     defaults:
       run:
+        shell: bash   # adds pipefail, so a failed xcodebuild/gradlew isn't hidden by "| tail"
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +106,7 @@ jobs:
     timeout-minutes: 60
     defaults:
       run:
+        shell: bash   # adds pipefail, so a failed xcodebuild/gradlew isn't hidden by "| tail"
         working-directory: mobile
     steps:
       - uses: actions/checkout@v4
