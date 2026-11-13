@@ -1,0 +1,65 @@
+{
+ "key": "119-hr-1013",
+ "title": "403(b) retirement plan investments (H.R. 1013)",
+ "headline": "Changes federal securities laws so 403(b) retirement plans, used by many teachers, nonprofit and hospital workers, can offer collective investment trusts and insurance-company separate accounts, as 401(k) plans already can. The House passed it on November 11, 2026; it now goes to the Senate.",
+ "sections": [
+  {
+   "h": "Which version this describes",
+   "p": [
+    "This describes the version the House passed, which includes changes recommended by the House Financial Services Committee. The official Congress.gov summary was written for the bill as introduced."
+   ]
+  },
+  {
+   "h": "New investment options for 403(b) plans",
+   "p": [
+    "Collective investment trusts are pooled investment funds run by banks or trust companies; insurance-company separate accounts are similar pooled funds run by insurers. Both are often used in 401(k) plans.",
+    "The bill extends the exemptions in federal securities laws that 401(k) plans already use for these products, so 403(b) plans could offer them too."
+   ]
+  },
+  {
+   "h": "Why the change is needed",
+   "p": [
+    "A 2022 retirement law (SECURE 2.0) changed the tax code to let 403(b) plans use these investments, but the matching securities-law changes were never made, so in practice most 403(b) plans still can't offer them."
+   ]
+  }
+ ],
+ "changes": [
+  "Allows 403(b) plans to offer collective investment trusts and insurance-company separate accounts without registering them as public securities.",
+  "Treats these products in 403(b) plans more like they are already treated in 401(k) plans."
+ ],
+ "affects": [
+  "Workers saving in 403(b) plans, including public school teachers and employees of charities, hospitals, universities and churches.",
+  "Employers that sponsor 403(b) plans and the banks, insurers and investment firms that manage these funds.",
+  "Securities regulators."
+ ],
+ "for": [
+  {
+   "point": "Teachers, nurses and nonprofit workers should have access to the same lower-cost investment options that private-sector 401(k) savers already have.",
+   "who": "Rep. Frank Lucas (R-Okla.), the sponsor",
+   "source": {
+    "name": "Office of Rep. Lucas",
+    "url": "https://lucas.house.gov/posts/bipartisan-bill-on-retirement-fairness-passes-house"
+   }
+  },
+  {
+   "point": "The bill fixes a gap left after the 2022 retirement law and would help savers at charities and educational institutions.",
+   "who": "U.S. Chamber of Commerce",
+   "source": {
+    "name": "U.S. Chamber of Commerce",
+    "url": "https://www.uschamber.com/retirement/u-s-chamber-welcomes-house-passage-of-retirement-fairness-for-charities-and-educational-institutions-act"
+   }
+  }
+ ],
+ "against": [
+  {
+   "point": "Many 403(b) plans are not covered by the federal pension law (ERISA), so removing securities-law protections leaves those savers with too little federal oversight.",
+   "who": "Reps. Maxine Waters (D-Calif.) and Stephen Lynch (D-Mass.)",
+   "source": {
+    "name": "401(k) Specialist",
+    "url": "https://401kspecialistmag.com/house-passes-bill-to-allow-cits-in-403b-plans-senate-up-next/"
+   }
+  }
+ ],
+ "next": "The bill goes to the Senate, where Sen. Katie Britt (R-Ala.) leads a companion bill. If the Senate does not pass it before the Congress ends on January 3, 2027, it would have to be reintroduced.",
+ "updated": "2026-11-13"
+}

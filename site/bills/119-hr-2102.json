@@ -1,0 +1,75 @@
+{
+ "key": "119-hr-2102",
+ "title": "Major Richard Star Act (H.R. 2102)",
+ "headline": "Lets veterans who were medically retired from the military because of a combat-related disability, with fewer than 20 years of service, collect their full military retirement pay and their full VA disability compensation at the same time. The House passed it on November 12, 2026; it now goes to the Senate.",
+ "sections": [
+  {
+   "h": "Which version this describes",
+   "p": [
+    "This describes the version the House passed, which was modified by the House rule for the bill (H. Res. 1247). The official Congress.gov summary was written for the bill as introduced in March 2025."
+   ]
+  },
+  {
+   "h": "Ending the pay reduction",
+   "p": [
+    "Today, most service members who are medically retired before 20 years of service have their military retirement pay reduced, dollar for dollar, by the disability compensation they receive from the VA.",
+    "For veterans whose disability is combat-related, the bill ends that reduction, so they would receive both payments in full."
+   ]
+  },
+  {
+   "h": "Who qualifies",
+   "p": [
+    "Veterans who were retired from the military for disability with fewer than 20 years of creditable service, and whose disability is combat-related under the military's existing definition (for example, injuries from combat, hazardous duty, or training that simulates war).",
+    "Veterans with 20 or more years of service already qualify for similar payments under current law and are not the focus of this bill."
+   ]
+  }
+ ],
+ "changes": [
+  "Removes the offset between military retirement pay and VA disability compensation for combat-injured medical retirees with fewer than 20 years of service.",
+  "Raises total monthly payments for those veterans; it does not change payments for veterans whose disabilities are not combat-related."
+ ],
+ "affects": [
+  "Roughly 50,000 to 59,000 combat-injured veterans who were medically retired early (estimates vary by source).",
+  "The Department of Defense and the VA, which pay these benefits.",
+  "Federal spending, since the bill is not paired with cuts elsewhere."
+ ],
+ "cost": "The Congressional Budget Office published a cost estimate for the bill as introduced (March 2026) and an updated estimate for the version modified by the House rule (October 2026). The bill does not include offsetting cuts or new revenue.",
+ "for": [
+  {
+   "point": "Combat-injured veterans earned their retirement pay through service and their disability pay through their injuries, so one should not be reduced because of the other.",
+   "who": "Veterans of Foreign Wars (VFW)",
+   "source": {
+    "name": "VFW",
+    "url": "https://www.vfw.org/media-and-events/latest-releases/archives/2026/11/vfw-celebrates-overwhelming-house-passage-of-major-richard-star-act"
+   }
+  },
+  {
+   "point": "The bill should pass on its own rather than be paid for by reducing benefits for other disabled veterans, as a rival package would do.",
+   "who": "Sen. Richard Blumenthal (D-Conn.), the Senate sponsor",
+   "source": {
+    "name": "Office of Sen. Blumenthal",
+    "url": "https://www.blumenthal.senate.gov/newsroom/press/release/video-senate-republicans-obstruct-the-major-richard-star-act-for-combat-injured-veterans"
+   }
+  }
+ ],
+ "against": [
+  {
+   "point": "The bill is expensive and should go through the regular committee process, with its cost weighed, rather than pass the Senate by unanimous consent.",
+   "who": "Sen. Ron Johnson (R-Wis.), who blocked a Senate attempt to pass it by unanimous consent",
+   "source": {
+    "name": "Task & Purpose",
+    "url": "https://taskandpurpose.com/news/veterans-richard-star-act-senate/"
+   }
+  },
+  {
+   "point": "Adding a large new benefit without budget offsets adds to the federal debt; Congress should pay for it with savings elsewhere.",
+   "who": "National Taxpayers Union",
+   "source": {
+    "name": "National Taxpayers Union",
+    "url": "https://www.ntu.org/publications/detail/passing-veterans-benefits-bill-is-irresponsible-without-budgetary-offsets"
+   }
+  }
+ ],
+ "next": "The bill goes to the Senate, where a companion bill (S. 1032) has been blocked from fast-track passage before. The Senate is also holding the House-passed Take Care of America's Veterans Act, a broader veterans package that includes a version of this change paired with cuts elsewhere. If the Senate does not pass it before the Congress ends on January 3, 2027, it would have to be reintroduced.",
+ "updated": "2026-11-13"
+}
